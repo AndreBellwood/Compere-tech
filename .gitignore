@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+uploads/*
+!uploads/.gitkeep
+test_*.txt

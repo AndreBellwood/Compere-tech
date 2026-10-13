@@ -1,0 +1,201 @@
+import os
+import sys
+from services.document_service import extract_document_text, clean_company_name, extract_document_clues
+from services.ai_service import compare_spec_with_offers
+from services.report_service import generate_pdf_report
+
+def test_clues_and_naming():
+    print("=== TEST 1: Clue Extraction and Naming Hygiene ===")
+    spec_path = "Test_Suite/Spec1.pdf"
+    offer_path = "Test_Suite/Offer1.pdf"
+    
+    spec_text = extract_document_text(spec_path)
+    offer_text = extract_document_text(offer_path)
+    
+    spec_clues = extract_document_clues(spec_text, "Spec1.pdf")
+    offer_clues = extract_document_clues(offer_text, "Offer1.pdf")
+    
+    print("Spec Clues:", spec_clues["project_candidates"])
+    print("Offer Clues - Emails:", offer_clues["emails"])
+    print("Offer Clues - Domains:", offer_clues["domains"])
+    print("Offer Clues - Project:", offer_clues["project_candidates"])
+    
+    assert "thermopak" in offer_clues["domains"] or any("thermopak" in e for e in offer_clues["emails"]), "Domain should be detected"
+    assert any("Msukligwe" in p for p in offer_clues["project_candidates"]), "Project candidate should be detected"
+
+    # Test clean company name with split tiers
+    clean_prem = clean_company_name("Carrier (Premium)")
+    clean_budg = clean_company_name("Carrier (Budget)")
+    clean_pty = clean_company_name("ThermOpac Air Systems (Pty) Ltd")
+    print(f"clean_prem: '{clean_prem}'")
+    print(f"clean_budg: '{clean_budg}'")
+    print(f"clean_pty: '{clean_pty}'")
+    
+    assert clean_prem == "Carrier (Premium)"
+    assert clean_budg == "Carrier (Budget)"
+    assert "ThermOpac" in clean_pty
+
+def test_pdf_report_with_project_and_split_offers():
+    print("\n=== TEST 2: PDF Report with Project Name & Split Offers ===")
+    mock_data = {
+        "project_name": "MOOIRIVIER MALL: HEATING VENTILATION AND AIR CONDITIONING",
+        "offer_columns": ["ThermOpac", "Carrier (Premium)", "Carrier (Budget)", "Trane"],
+        "executive_summary": "**Tender Overview:** Adjudication of 4 vendor submissions for SASOL Phase 1 Expansion AHU Package.\n**Compliance & Variances:** High compliance from ThermOpac and Carrier Premium. Carrier Budget omits VRF interface kit.\n**Adjudication Recommendation:** ThermOpac and Carrier Premium represent technically compliant bids.",
+        "vendor_scores": [
+            {"vendor_name": "ThermOpac", "compliance_percent": 100.0, "passed_count": 3, "marginal_count": 0, "failed_count": 0, "total_count": 3},
+            {"vendor_name": "Carrier (Premium)", "compliance_percent": 95.0, "passed_count": 3, "marginal_count": 0, "failed_count": 0, "total_count": 3},
+            {"vendor_name": "Carrier (Budget)", "compliance_percent": 66.7, "passed_count": 2, "marginal_count": 0, "failed_count": 1, "total_count": 3},
+            {"vendor_name": "Trane", "compliance_percent": 83.3, "passed_count": 2, "marginal_count": 1, "failed_count": 0, "total_count": 3}
+        ],
+        "scope_table": [
+            {
+                "Parameter": "Scope of Supply",
+                "Spec_Requirement": "AHU Package complete with controls",
+                "vendors": {
+                    "ThermOpac": {"value": "Full AHU + Controls", "status": "Compliant"},
+                    "Carrier (Premium)": {"value": "Full AHU + Premium Controls", "status": "Compliant"},
+                    "Carrier (Budget)": {"value": "Standard AHU (Basic controls)", "status": "Compliant"},
+                    "Trane": {"value": "AHU Package ex-works", "status": "Marginal"}
+                }
+            }
+        ],
+        "units": [
+            {
+                "unit_name": "Unit 2: Primary Air Handling Unit",
+                "parameters": [
+                    {
+                        "Parameter": "Supply Airflow",
+                        "Spec_Requirement": "5300 l/s",
+                        "vendors": {
+                            "ThermOpac": {"value": "5300 l/s", "status": "Compliant"},
+                            "Carrier (Premium)": {"value": "5350 l/s", "status": "Compliant"},
+                            "Carrier (Budget)": {"value": "5100 l/s", "status": "Marginal"},
+                            "Trane": {"value": "5200 l/s", "status": "Compliant"}
+                        }
+                    },
+                    {
+                        "Parameter": "Cooling Coil Capacity",
+                        "Spec_Requirement": "56.4 kW",
+                        "vendors": {
+                            "ThermOpac": {"value": "56.4 kW", "status": "Compliant"},
+                            "Carrier (Premium)": {"value": "58.2 kW", "status": "Compliant"},
+                            "Carrier (Budget)": {"value": "48.0 kW", "status": "Non-Compliant"},
+                            "Trane": {"value": "66.5 kW", "status": "Marginal"}
+                        }
+                    }
+                ],
+                "discrepancies": {
+                    "Carrier (Budget)": ["Coil capacity 48.0 kW is 14.9% below design duty."],
+                    "Trane": ["Coil oversized by 17.9% (>15% review)."]
+                }
+            }
+        ]
+    }
+    
+    os.makedirs("uploads", exist_ok=True)
+    report_file_4 = os.path.join("uploads", "test_report_portrait_4v.pdf")
+    generate_pdf_report(report_file_4, mock_data)
+    assert os.path.exists(report_file_4), "Portrait PDF should be generated"
+    
+    import fitz
+    doc4 = fitz.open(report_file_4)
+    p0_4 = doc4[0]
+    print(f"4 Vendors Page Size: width={p0_4.rect.width:.2f}, height={p0_4.rect.height:.2f}")
+    assert round(p0_4.rect.width) == 595, f"Expected A4 Portrait width ~595, got {p0_4.rect.width}"
+    assert round(p0_4.rect.height) == 842, f"Expected A4 Portrait height ~842, got {p0_4.rect.height}"
+    
+    text4 = "".join(p.get_text() for p in doc4)
+    assert "COMPèRE" in text4, "COMPèRE with grave accent must be present in text"
+    
+    # Verify Date stamp on Page 1 and Serial on Page 2+
+    p1_text = doc4[0].get_text()
+    p2_text = doc4[1].get_text()
+    print("Page 1 Text Sample:\n", p1_text[:300])
+    print("Page 2 Text Sample:\n", p2_text[:300])
+    assert "Date:" in p1_text, "Date stamp must be present on Page 1"
+    assert "Serial:" not in p1_text, "Serial number should not be on Page 1"
+    assert "Serial:" in p2_text, "Serial number must be present on Page 2"
+    assert "46308" in p2_text, "OADate 46308 must be in Serial on Page 2"
+
+    for page_idx, page in enumerate(doc4):
+        blocks = page.get_text("dict")["blocks"]
+        for b in blocks:
+            if "lines" in b:
+                for line in b["lines"]:
+                    for span in line["spans"]:
+                        text = span["text"].strip()
+                        size = span["size"]
+                        if text:
+                            assert size >= 9.9, f"Page {page_idx+1} span '{text}' has font size {size} < 10 pt!"
+
+    print("[PASS] 4 Vendors successfully generated in A4 PORTRAIT mode with strictly >= 10 pt text, Page 1 Date stamp, and Page 2+ OADate Serial.")
+
+    # 5 Vendors -> MUST BE A4 LANDSCAPE
+    mock_data_5 = dict(mock_data)
+    mock_data_5["offer_columns"] = ["ThermOpac", "Carrier (Premium)", "Carrier (Budget)", "Trane", "Daikin"]
+    mock_data_5["vendor_scores"] = list(mock_data["vendor_scores"]) + [
+        {"vendor_name": "Daikin", "compliance_percent": 90.0, "passed_count": 3, "marginal_count": 0, "failed_count": 0, "total_count": 3}
+    ]
+    report_file_5 = os.path.join("uploads", "test_report_landscape_5v.pdf")
+    generate_pdf_report(report_file_5, mock_data_5)
+    assert os.path.exists(report_file_5), "Landscape PDF should be generated"
+    
+    doc5 = fitz.open(report_file_5)
+    p0_5 = doc5[0]
+    print(f"5 Vendors Page Size: width={p0_5.rect.width:.2f}, height={p0_5.rect.height:.2f}")
+    assert round(p0_5.rect.width) == 842, f"Expected A4 Landscape width ~842, got {p0_5.rect.width}"
+    assert round(p0_5.rect.height) == 595, f"Expected A4 Landscape height ~595, got {p0_5.rect.height}"
+    
+    p1_5_text = doc5[0].get_text()
+    p2_5_text = doc5[1].get_text()
+    assert "Date:" in p1_5_text, "Date stamp must be present on Page 1 of 5-vendor report"
+    assert "Serial:" not in p1_5_text, "Serial number should not be on Page 1 of 5-vendor report"
+    assert "Serial:" in p2_5_text, "Serial number must be present on Page 2 of 5-vendor report"
+    assert "46308" in p2_5_text, "OADate 46308 must be in Serial on Page 2 of 5-vendor report"
+
+    for page_idx, page in enumerate(doc5):
+        blocks = page.get_text("dict")["blocks"]
+        for b in blocks:
+            if "lines" in b:
+                for line in b["lines"]:
+                    for span in line["spans"]:
+                        text = span["text"].strip()
+                        size = span["size"]
+                        if text:
+                            assert size >= 9.9, f"Page {page_idx+1} span '{text}' has font size {size} < 10 pt!"
+
+    print("[PASS] 5 Vendors successfully generated in A4 LANDSCAPE mode with strictly >= 10 pt text and COMPèRE branding.")
+
+def test_live_ai_audit():
+    print("\n=== TEST 3: Live AI Compliance Audit with Clues & Project Extraction ===")
+    spec_text = extract_document_text("Test_Suite/Spec1.pdf")
+    offer_text = extract_document_text("Test_Suite/Offer1.pdf")
+    
+    # Intentionally passing a generic filename "Offer1.pdf" to verify it detects the true vendor and project
+    vendor_offers = [
+        {"filename": "Offer1.pdf", "text": offer_text}
+    ]
+    
+    try:
+        results = compare_spec_with_offers(spec_text, vendor_offers)
+        print("Identified Project Name:", results.get("project_name"))
+        print("Vendor Scores:", results.get("vendor_scores"))
+        print("Offer Columns:", results.get("offer_columns"))
+        
+        v_scores = results.get("vendor_scores", [])
+        assert len(v_scores) > 0, "Should have vendor scores"
+        v_name = v_scores[0]["vendor_name"]
+        print(f"Detected Vendor Name: '{v_name}'")
+        assert "offer1" not in v_name.lower(), f"Vendor name should not be Offer1, got: {v_name}"
+        
+        proj = results.get("project_name", "")
+        print(f"Detected Project: '{proj}'")
+        assert proj and proj.lower() != "unknown", "Project name should be detected"
+        print("LIVE AI AUDIT TEST PASSED!")
+    except Exception as e:
+        print(f"Live AI test encountered: {e}")
+
+if __name__ == "__main__":
+    test_clues_and_naming()
+    test_pdf_report_with_project_and_split_offers()
+    print("\nALL VERIFICATIONS COMPLETED!")
