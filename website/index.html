@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>COMPèRE | HVAC Technical Compliance & Tender Adjudication Terminal</title>
+  <meta name="description" content="AI-Powered HVAC technical compliance and tender adjudication terminal for consulting engineers." />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#F0F7FF', 100: '#E0EFFE', 200: '#BAE0FD', 300: '#7CC4FA',
+              400: '#38BDF8', 500: '#0EA5E9', 600: '#0284C7', 700: '#0369A1',
+              800: '#1A365D', 900: '#0F172A', 950: '#070D18'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .glow-effect { background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.15), transparent 70%); }
+    .grid-pattern {
+      background-image: linear-gradient(to right, rgba(203, 213, 225, 0.08) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(203, 213, 225, 0.08) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+  </style>
+</head>
+<body class="bg-[#0B1120] text-slate-100 font-sans antialiased selection:bg-brand-500 selection:text-white relative min-h-screen">
+
+  <aside aria-label="Announcement" class="bg-gradient-to-r from-brand-900 via-brand-800 to-brand-900 border-b border-brand-700/40 text-xs py-2 px-4 text-center text-slate-300">
+    <div class="max-w-7xl mx-auto flex items-center justify-center gap-2">
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-brand-400/20 text-brand-300 border border-brand-400/30">Release v2.4</span>
+      <span>Now featuring Standalone Parameter Extraction, Dynamic OADate Serials & Multi-Currency Daily Conversion.</span>
+      <a href="#matrix-preview" class="underline text-brand-300 hover:text-white font-medium ml-1 transition">See Demo &rarr;</a>
+    </div>
+  </aside>
+
+  <nav class="sticky top-0 z-50 backdrop-blur-md bg-[#0B1120]/85 border-b border-slate-800/80 transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-3 group">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-800 to-brand-950 border border-brand-400/40 flex items-center justify-center shadow-lg shadow-brand-500/10 group-hover:border-brand-400 transition">
+          <i data-lucide="layers" class="w-5 h-5 text-brand-400"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-2xl font-extrabold tracking-tight text-white">COMP<span class="text-brand-400">è</span>RE</span>
+            <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-brand-400/10 text-brand-400 border border-brand-400/30">HVAC</span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-medium tracking-wide">Technical Compliance Terminal</p>
+        </div>
+      </a>
+
+      <div class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+        <a href="#capabilities" class="hover:text-white transition">Capabilities</a>
+        <a href="#workflow" class="hover:text-white transition">Workflow</a>
+        <a href="#matrix-preview" class="hover:text-white transition">Ledger Preview</a>
+        <a href="#confidentiality" class="hover:text-white transition">Security & Trust</a>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="http://localhost:8501" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-500 hover:to-brand-600 text-white font-bold text-sm shadow-md shadow-brand-600/30 border border-brand-400/30 hover:shadow-brand-500/40 transform hover:-translate-y-0.5 transition duration-150">
+          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+          <span>Launch Terminal</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+  <!-- Hero Section -->
+  <section class="relative pt-20 pb-24 overflow-hidden glow-effect grid-pattern border-b border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-900/60 border border-brand-400/30 text-xs font-semibold text-brand-300 mb-8 backdrop-blur shadow-sm">
+        <i data-lucide="shield-check" class="w-4 h-4 text-brand-400"></i>
+        <span>Independent Tender Adjudication for Consulting Engineers</span>
+      </div>
+
+      <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white max-w-5xl mx-auto leading-[1.12]">
+        Eliminate Guesswork from <br class="hidden sm:inline" />
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 via-sky-200 to-brand-500">
+          HVAC Tender Adjudication
+        </span>
+      </h1>
+
+      <p class="mt-6 text-lg sm:text-xl text-slate-300 max-w-3xl mx-auto font-normal leading-relaxed">
+        COMPèRE performs forensic cross-examination of engineering specifications against multiple vendor bids. Instantly detect capacity shortfalls, duty variances, and demarcation omissions in seconds.
+      </p>
+
+      <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="http://localhost:8501" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-base shadow-xl shadow-brand-600/30 border border-brand-400/40 transform hover:-translate-y-0.5 transition duration-150">
+          <i data-lucide="terminal" class="w-5 h-5"></i>
+          <span>Launch Local Terminal (Streamlit)</span>
+        </a>
+        <a href="#matrix-preview" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-base border border-slate-700 transition">
+          <i data-lucide="file-spreadsheet" class="w-5 h-5 text-brand-400"></i>
+          <span>Inspect Sample Ledger</span>
+        </a>
+      </div>
+
+      <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur">
+          <div class="text-xs text-slate-400 font-medium">Compliance Precision</div>
+          <div class="text-xl font-bold text-white mt-1">100% SANS / ASHRAE</div>
+          <div class="text-[11px] text-emerald-400 mt-1 font-mono">Duty & ESP verification</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur">
+          <div class="text-xs text-slate-400 font-medium">Vendor Multi-Tiers</div>
+          <div class="text-xl font-bold text-white mt-1">Split Adjudication</div>
+          <div class="text-[11px] text-sky-400 mt-1 font-mono">Auto Premium vs Budget</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur">
+          <div class="text-xs text-slate-400 font-medium">Report Standards</div>
+          <div class="text-xl font-bold text-white mt-1">A4 Dynamic PDF</div>
+          <div class="text-[11px] text-emerald-400 mt-1 font-mono">OADate serial verified</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur">
+          <div class="text-xs text-slate-400 font-medium">Global Trading</div>
+          <div class="text-xl font-bold text-white mt-1">Live Spot Rates</div>
+          <div class="text-[11px] text-brand-400 mt-1 font-mono">ZAR • USD • EUR • GBP • AED</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Interactive Matrix Simulation Preview -->
+  <section id="matrix-preview" class="py-20 bg-[#0F172A] border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center max-w-3xl mx-auto mb-14">
+        <span class="text-xs font-bold uppercase tracking-widest text-brand-400 px-3 py-1 rounded bg-brand-400/10 border border-brand-400/20">Live Interactive Demonstration</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">HVAC Technical Compliance Ledger</h2>
+        <p class="text-slate-400 mt-2 text-base">Example adjudication for <span class="text-white font-semibold">Mooirivier Mall Central Plant Upgrade</span> (4 submissions).</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-700 bg-slate-900/95 overflow-hidden shadow-2xl">
+        <div class="bg-brand-900/90 px-6 py-4 border-b border-slate-700 flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+            <div>
+              <div class="text-sm font-bold text-white">Unit 01: Primary Air Handling Unit (AHU-01)</div>
+              <div class="text-xs text-slate-300 font-mono">Ref: J1608M-SPEC-01 • 5,300 l/s • ESP 250 Pa</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300 border border-slate-700 font-mono">A4 Portrait</span>
+            <span class="text-xs bg-brand-800/80 text-brand-200 px-3 py-1.5 rounded-lg border border-brand-500/40 font-mono">Serial: 4632-6350</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-800/90 text-xs text-slate-300 font-semibold uppercase tracking-wider border-b border-slate-700">
+              <tr>
+                <th class="px-6 py-3 w-1/4">Parameter</th>
+                <th class="px-6 py-3 w-1/4">Requirement</th>
+                <th class="px-6 py-3">ThermOpac</th>
+                <th class="px-6 py-3">Carrier (Premium)</th>
+                <th class="px-6 py-3">Carrier (Budget)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800 text-slate-200">
+              <tr class="hover:bg-slate-800/40 transition">
+                <td class="px-6 py-3 font-semibold text-white">Cooling Coil Total Duty</td>
+                <td class="px-6 py-3 font-mono text-slate-300">56.4 kW (7/12°C)</td>
+                <td class="px-6 py-3">
+                  <span class="font-mono text-white">56.4 kW</span>
+                  <span class="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">Pass</span>
+                </td>
+                <td class="px-6 py-3">
+                  <span class="font-mono text-white">58.2 kW</span>
+                  <span class="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">Pass</span>
+                </td>
+                <td class="px-6 py-3 bg-rose-950/20">
+                  <span class="font-mono text-rose-300 font-semibold">48.0 kW</span>
+                  <span class="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold bg-rose-950 text-rose-300 border border-rose-700/50">Fail (-14.9%)</span>
+                </td>
+              </tr>
+              <tr class="hover:bg-slate-800/40 transition">
+                <td class="px-6 py-3 font-semibold text-white">Supply Airflow Volume</td>
+                <td class="px-6 py-3 font-mono text-slate-300">5,300 l/s</td>
+                <td class="px-6 py-3">
+                  <span class="font-mono text-white">5,300 l/s</span>
+                  <span class="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">Pass</span>
+                </td>
+                <td class="px-6 py-3">
+                  <span class="font-mono text-white">5,350 l/s</span>
+                  <span class="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">Pass</span>
+                </td>
+                <td class="px-6 py-3 bg-amber-950/20">
+                  <span class="font-mono text-amber-200">5,100 l/s</span>
+                  <span class="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold bg-amber-950 text-amber-300 border border-amber-700/50">Marginal (-3.8%)</span>
+                </td>
+              </tr>
+              <tr class="hover:bg-slate-800/40 transition">
+                <td class="px-6 py-3 font-semibold text-white">External Static Pressure</td>
+                <td class="px-6 py-3 font-mono text-slate-300">250 Pa</td>
+                <td class="px-6 py-3">
+                  <span class="font-mono text-white">265 Pa</span>
+                  <span class="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">Pass</span>
+                </td>
+                <td class="px-6 py-3">
+                  <span class="font-mono text-white">250 Pa</span>
+                  <span class="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">Pass</span>
+                </td>
+                <td class="px-6 py-3">
+                  <span class="font-mono text-white">245 Pa</span>
+                  <span class="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">Pass</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="bg-slate-950 p-6 border-t border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-slate-900 border border-emerald-500/40 flex items-center justify-between">
+            <div>
+              <div class="text-xs text-slate-400 font-semibold">1st Position (Recommended)</div>
+              <div class="text-lg font-bold text-white mt-0.5">ThermOpac Systems</div>
+              <div class="text-xs text-slate-400 mt-1">3 Pass • 0 Marginal • 0 Fail</div>
+            </div>
+            <div class="text-2xl font-black text-emerald-400">100.0%</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900 border border-brand-500/40 flex items-center justify-between">
+            <div>
+              <div class="text-xs text-slate-400 font-semibold">2nd Position (Compliant Bid)</div>
+              <div class="text-lg font-bold text-white mt-0.5">Carrier (Premium)</div>
+              <div class="text-xs text-slate-400 mt-1">3 Pass • 0 Marginal • 0 Fail</div>
+            </div>
+            <div class="text-2xl font-black text-sky-400">95.0%</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-900 border border-rose-500/40 flex items-center justify-between">
+            <div>
+              <div class="text-xs text-slate-400 font-semibold">Variance Review Required</div>
+              <div class="text-lg font-bold text-white mt-0.5">Carrier (Budget)</div>
+              <div class="text-xs text-slate-400 mt-1">1 Pass • 1 Marginal • 1 Fail</div>
+            </div>
+            <div class="text-2xl font-black text-rose-400">66.7%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- 4 Core Capabilities Section -->
+  <section id="capabilities" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center max-w-3xl mx-auto mb-16">
+      <span class="text-xs font-bold uppercase tracking-widest text-brand-400 px-3 py-1 rounded bg-brand-400/10 border border-brand-400/20">Enterprise Engineering Engine</span>
+      <h2 class="text-3xl sm:text-5xl font-extrabold text-white mt-4">Engineered for Mechanical Consultants</h2>
+      <p class="text-slate-400 mt-3 text-lg">Designed specifically for HVAC consulting engineers, quantity surveyors, and tender adjudication panels.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div class="p-8 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-brand-500/40 transition duration-200 relative group">
+        <div class="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-400/30 flex items-center justify-center text-brand-400 mb-6 group-hover:scale-105 transition">
+          <i data-lucide="git-compare" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">Multi-Vendor Comparative Audit</h3>
+        <p class="text-slate-400 text-sm leading-relaxed mb-4">
+          Ingests multi-vendor PDF, Word, and Excel tender submissions alongside consulting specifications. Automatically normalizes parameter aliases and detects split options (e.g. Carrier Premium vs Carrier Budget).
+        </p>
+        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i> Side-by-side adjudication up to 5+ vendors</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i> Automatic vendor email & clue discovery</li>
+        </ul>
+      </div>
+
+      <div class="p-8 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-brand-500/40 transition duration-200 relative group">
+        <div class="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-400/30 flex items-center justify-center text-sky-400 mb-6 group-hover:scale-105 transition">
+          <i data-lucide="file-text" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">Standalone Parameter Extraction</h3>
+        <p class="text-slate-400 text-sm leading-relaxed mb-4">
+          Need to audit a lone specification or single vendor quotation? Switch to Standalone Extraction mode. COMPèRE extracts equipment schedules, project names, and demarcation notes without comparative pass/fail scoring.
+        </p>
+        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-sky-400"></i> Auto-detection of spec vs quotation nature</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-sky-400"></i> Dedicated parameter schedule corporate PDFs</li>
+        </ul>
+      </div>
+
+      <div class="p-8 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-brand-500/40 transition duration-200 relative group">
+        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center text-amber-400 mb-6 group-hover:scale-105 transition">
+          <i data-lucide="coins" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">Real-Time Currency & Unit Normalization</h3>
+        <p class="text-slate-400 text-sm leading-relaxed mb-4">
+          Eliminate manual unit conversions and exchange rate fluctuations. Evaluates bids across global currencies (ZAR, USD, EUR, GBP, AED) via live daily spot rates while normalizing SI Metric, US Imperial, and Asian unit conventions.
+        </p>
+        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400"></i> Spot rate conversion with original value in brackets</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-amber-400"></i> Dual units: kW / TR, l/s / CFM, °C / °F</li>
+        </ul>
+      </div>
+
+      <div class="p-8 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-brand-500/40 transition duration-200 relative group">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 mb-6 group-hover:scale-105 transition">
+          <i data-lucide="file-check-2" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">Audit-Proof Corporate PDF Reports</h3>
+        <p class="text-slate-400 text-sm leading-relaxed mb-4">
+          Publishes publication-ready engineering ledgers with custom corporate logos, dynamic A4 Portrait/Landscape orientation, OADate serial timestamps, and strictly verified ≥10 pt typography designed for boardrooms and legal tenders.
+        </p>
+        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i> Tamper-evident 8-digit OADate serials</li>
+          <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i> Multi-page demarcation matrices & executive summaries</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <!-- 3-Step Workflow -->
+  <section id="workflow" class="py-20 bg-slate-900/60 border-y border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <span class="text-xs font-bold uppercase tracking-widest text-brand-400 px-3 py-1 rounded bg-brand-400/10 border border-brand-400/20">Intuitive Process</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">From Tender Submissions to Audit Ledger in 3 Steps</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="w-10 h-10 rounded-lg bg-brand-600 text-white font-bold flex items-center justify-center mb-4 text-lg">1</div>
+          <h3 class="text-lg font-bold text-white mb-2">Stage Your Tender Files</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Drag and drop consulting engineering specifications and all vendor tender bids (PDF, DOCX, XLSX). Upload your corporate header logo for report branding.
+          </p>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="w-10 h-10 rounded-lg bg-brand-600 text-white font-bold flex items-center justify-center mb-4 text-lg">2</div>
+          <h3 class="text-lg font-bold text-white mb-2">Configure Scope & Preferences</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Filter by equipment scope (Central Plant AHUs/Chillers, VRV/DX, or fans), designate target reporting currency, and select preferred engineering measurement units.
+          </p>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+          <div class="w-10 h-10 rounded-lg bg-brand-600 text-white font-bold flex items-center justify-center mb-4 text-lg">3</div>
+          <h3 class="text-lg font-bold text-white mb-2">Execute & Download Ledger</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">
+            Execute the audit. Review the interactive adjudication leaderboard on screen and immediately download the formal, tamper-evident corporate PDF ledger.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Confidentiality & Security Assurance -->
+  <section id="confidentiality" class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="rounded-3xl p-8 sm:p-12 bg-gradient-to-br from-brand-950 via-slate-900 to-slate-950 border border-brand-500/30 shadow-2xl">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+        <div class="lg:col-span-8">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700/50 text-xs font-semibold mb-4">
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+            Strict Consulting Confidentiality
+          </span>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white">Your Tender Submissions Never Leave Your Control</h2>
+          <p class="text-slate-300 mt-4 text-base leading-relaxed">
+            We understand the extreme sensitivity of commercial HVAC tender bids. COMPèRE runs locally on your workstation or private firm network. No vendor pricing models, engineering designs, or proprietary subcontractor estimates are permanently stored or shared.
+          </p>
+          <div class="mt-6 flex flex-wrap gap-4 text-xs font-mono text-slate-300">
+            <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center gap-2">
+              <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i> Local File Processing
+            </span>
+            <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center gap-2">
+              <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i> Zero Long-Term Cloud Retention
+            </span>
+            <span class="px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 flex items-center gap-2">
+              <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i> Audit-Ready OADate Tracking
+            </span>
+          </div>
+        </div>
+
+        <div class="lg:col-span-4 flex flex-col items-center lg:items-end justify-center">
+          <a href="http://localhost:8501" target="_blank" rel="noopener noreferrer" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-5 rounded-2xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-extrabold text-base shadow-xl shadow-brand-500/20 transform hover:-translate-y-1 transition duration-150">
+            <i data-lucide="terminal" class="w-5 h-5"></i>
+            <span>Open Terminal Now</span>
+          </a>
+          <span class="text-[11px] text-slate-400 mt-2 font-mono">Streamlit instance at :8501</span>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- Footer -->
+  <footer class="bg-[#070D18] border-t border-slate-800/80 py-12 text-slate-400 text-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-brand-800/40 border border-brand-400/30 flex items-center justify-center text-brand-400">
+          <i data-lucide="layers" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-white text-base">COMP<span class="text-brand-400">è</span>RE</span>
+          <span class="text-xs text-slate-500 ml-2">HVAC Technical Compliance Terminal</span>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 text-center sm:text-right">
+        <p>&copy; 2026 COMPèRE Engineering Solutions. All rights reserved.</p>
+        <p class="mt-1">Prepared for Consulting Engineering & Tender Adjudication Panels.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

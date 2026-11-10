@@ -89,6 +89,15 @@ def test_pdf_report_with_project_and_split_offers():
                     "Trane": ["Coil oversized by 17.9% (>15% review)."]
                 }
             }
+        ],
+        "specifier_company": "CRC Consulting Engineers",
+        "specification_ambiguities": [
+            {
+                "item": "Unit 2: Cooling Coil",
+                "ambiguity": "Entering water temp specified as 7°C on schedule but 6°C in section 4.2.",
+                "impact": "Directly impacts coil surface area, rows, and pricing.",
+                "verification_action": "Engineer must confirm chilled water design supply temperature."
+            }
         ]
     }
     
@@ -115,7 +124,13 @@ def test_pdf_report_with_project_and_split_offers():
     assert "Date:" in p1_text, "Date stamp must be present on Page 1"
     assert "Serial:" not in p1_text, "Serial number should not be on Page 1"
     assert "Serial:" in p2_text, "Serial number must be present on Page 2"
-    assert "46308" in p2_text, "OADate 46308 must be in Serial on Page 2"
+    
+    # Verify 8 digits, no decimal, dash after four digits (XXXX-XXXX)
+    import re
+    serial_match_4 = re.search(r"Serial:\s*(\d{4}-\d{4})", p2_text)
+    assert serial_match_4, f"Serial on Page 2 must be 8 digits with dash after 4 digits (XXXX-XXXX), got:\n{p2_text[:300]}"
+    assert "." not in serial_match_4.group(1), f"Serial must not contain a decimal, got: {serial_match_4.group(1)}"
+    print(f"[VERIFIED] Page 2 Serial found: '{serial_match_4.group(0)}'")
 
     for page_idx, page in enumerate(doc4):
         blocks = page.get_text("dict")["blocks"]
@@ -126,9 +141,13 @@ def test_pdf_report_with_project_and_split_offers():
                         text = span["text"].strip()
                         size = span["size"]
                         if text:
-                            assert size >= 9.9, f"Page {page_idx+1} span '{text}' has font size {size} < 10 pt!"
+                            # Serial number on page 2+ is strictly 8 pt font
+                            if page_idx > 0 and ("Serial:" in text or re.search(r"\d{4}-\d{4}", text)):
+                                assert round(size) == 8, f"Page {page_idx+1} serial '{text}' should be 8 pt, got {size}"
+                            else:
+                                assert size >= 9.9, f"Page {page_idx+1} span '{text}' has font size {size} < 10 pt!"
 
-    print("[PASS] 4 Vendors successfully generated in A4 PORTRAIT mode with strictly >= 10 pt text, Page 1 Date stamp, and Page 2+ OADate Serial.")
+    print("[PASS] 4 Vendors successfully generated in A4 PORTRAIT mode with strictly >= 10 pt text, Page 1 Date stamp, and Page 2+ bottom right 8 pt Serial.")
 
     # 5 Vendors -> MUST BE A4 LANDSCAPE
     mock_data_5 = dict(mock_data)
@@ -151,7 +170,10 @@ def test_pdf_report_with_project_and_split_offers():
     assert "Date:" in p1_5_text, "Date stamp must be present on Page 1 of 5-vendor report"
     assert "Serial:" not in p1_5_text, "Serial number should not be on Page 1 of 5-vendor report"
     assert "Serial:" in p2_5_text, "Serial number must be present on Page 2 of 5-vendor report"
-    assert "46308" in p2_5_text, "OADate 46308 must be in Serial on Page 2 of 5-vendor report"
+    serial_match_5 = re.search(r"Serial:\s*(\d{4}-\d{4})", p2_5_text)
+    assert serial_match_5, f"Serial on Page 2 of 5-vendor report must be 8 digits with dash after 4 digits (XXXX-XXXX), got: {p2_5_text[:300]}"
+    assert "." not in serial_match_5.group(1), f"Serial must not contain a decimal, got: {serial_match_5.group(1)}"
+    print(f"[VERIFIED] Page 2 (5-vendor) Serial found: '{serial_match_5.group(0)}'")
 
     for page_idx, page in enumerate(doc5):
         blocks = page.get_text("dict")["blocks"]
@@ -162,7 +184,11 @@ def test_pdf_report_with_project_and_split_offers():
                         text = span["text"].strip()
                         size = span["size"]
                         if text:
-                            assert size >= 9.9, f"Page {page_idx+1} span '{text}' has font size {size} < 10 pt!"
+                            # Serial number on page 2+ is strictly 8 pt font
+                            if page_idx > 0 and ("Serial:" in text or re.search(r"\d{4}-\d{4}", text)):
+                                assert round(size) == 8, f"Page {page_idx+1} serial '{text}' should be 8 pt, got {size}"
+                            else:
+                                assert size >= 9.9, f"Page {page_idx+1} span '{text}' has font size {size} < 10 pt!"
 
     print("[PASS] 5 Vendors successfully generated in A4 LANDSCAPE mode with strictly >= 10 pt text and COMPèRE branding.")
 

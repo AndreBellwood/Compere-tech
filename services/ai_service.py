@@ -1,10 +1,80 @@
 import json
 import re
+import importlib
 from openai import OpenAI
-from config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL
+import config
 from services.document_service import clean_company_name, extract_document_clues
+from services.currency_service import get_live_rates
 
-def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict]) -> dict:
+
+def get_ai_client():
+    """Dynamically reloads config to pick up runtime updates to API keys/models."""
+    try:
+        importlib.reload(config)
+    except Exception:
+        pass
+    client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
+    return client, config.LLM_MODEL
+
+
+def build_user_preferences_instructions(user_preferences: dict) -> str:
+    """Builds explicit LLM instructions based on user-defined limits and preferences."""
+    if not user_preferences:
+        return ""
+
+    instructions = []
+    scope = user_preferences.get("equipment_scope", "")
+    if isinstance(scope, list):
+        if len(scope) < 7 and len(scope) > 0:
+            scope_str = ", ".join(f"'{s}'" for s in scope)
+            instructions.append(
+                f"USER PREFERENCE - EQUIPMENT SCOPE LIMIT: The audit is strictly limited to the following selected equipment categories: {scope_str}. Only evaluate equipment units matching these designated categories. Omit other equipment types from schedules and scoring."
+            )
+    elif scope and "Auto-select" not in scope:
+        if "10kW capacity" in scope:
+            instructions.append(
+                "USER PREFERENCE - EQUIPMENT SCOPE LIMIT: Focus exclusively on CHW Units, DX AHUs, Roof-top packages, and hybrid units larger than 10kW capacity. Omit smaller residential units, small splits, or non-HVAC systems."
+            )
+        elif "smaller than 10kW" in scope:
+            instructions.append(
+                "USER PREFERENCE - EQUIPMENT SCOPE LIMIT: Focus exclusively on splits, ducted splits, cassettes, and unitary units smaller than 10kW capacity. Omit large central AHUs or heavy central plant equipment."
+            )
+        else:
+            instructions.append(f"USER PREFERENCE - EQUIPMENT SCOPE LIMIT: Filter and limit evaluation to: {scope}.")
+
+    currency = user_preferences.get("preferred_currency", "Document Default")
+    if currency and currency != "Document Default":
+        rates = get_live_rates()
+        curr_rate = rates.get(currency.upper(), 1.0)
+        instructions.append(
+            f"USER PREFERENCE - CURRENCY CONVERSION: Convert all equipment prices, rates, and costs into '{currency.upper()}' at prevailing daily spot rates. In tables and financial summaries, display the converted amount and the original quoted currency in brackets, e.g., '{currency} XX,XXX [Orig: ZAR/USD XX,XXX]'."
+        )
+
+    units_sys = user_preferences.get("preferred_units", "Document Default")
+    if units_sys and units_sys != "Document Default":
+        if "Imperial" in units_sys:
+            instructions.append(
+                "USER PREFERENCE - MEASUREMENT UNITS: Present all engineering values normalized in IMPERIAL units (Tons/BTU/h for cooling/heating, CFM for airflow, in.wg for static pressure, °F for DB/WB temperatures, inches for dimensions, lbs for weight)."
+            )
+        elif "Metric" in units_sys:
+            instructions.append(
+                "USER PREFERENCE - MEASUREMENT UNITS: Present all engineering values normalized in METRIC (SI) units (kW for cooling/heating, l/s or m³/s for airflow, Pa for static pressure, °C for DB/WB temperatures, mm for dimensions, kg for weight)."
+            )
+        elif "Asian" in units_sys:
+            instructions.append(
+                "USER PREFERENCE - MEASUREMENT UNITS: Present all engineering values normalized in ASIAN / REGIONAL units (RT or kcal/h for cooling, m³/h for airflow, mmAq or Pa for static pressure, °C for temperatures)."
+            )
+        elif "Mixed" in units_sys:
+            instructions.append(
+                "USER PREFERENCE - MEASUREMENT UNITS: Present all engineering values with DUAL / MIXED units (e.g. '56.4 kW (16.0 TR)', '5,300 l/s (11,230 CFM)', '24°C DB (75.2°F)', '250 Pa (1.0 in.wg)')."
+            )
+
+    if instructions:
+        return "\n--- APPLIED USER PREFERENCES & LIMITS ---\n" + "\n".join(instructions) + "\n"
+    return ""
+
+
+def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict], user_preferences: dict = None, specifier_company: str = "") -> dict:
     """
     Audits one or more vendor submissions against an engineering specification.
     Identifies common project name, extracts true vendor names from document clues,
@@ -12,15 +82,17 @@ def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict]) -> dict:
     
     vendor_offers is a list of dicts: [{"vendor_name": "...", "text": "...", "filename": "..."}]
     """
-    client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+    client, model_name = get_ai_client()
     
     spec_clues = extract_document_clues(spec_text, "Specification")
     
     offers_prompt_section = ""
     candidate_clues_summary = []
+    vendor_declarations = []
     
     for idx, v in enumerate(vendor_offers, start=1):
         filename = v.get("filename", v.get("vendor_name", f"Submission_{idx}"))
+        v_name = v.get("vendor_name", "").strip()
         v_text = v.get("text", "")
         clues = extract_document_clues(v_text, filename)
         
@@ -30,8 +102,14 @@ def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict]) -> dict:
         tier_str = ", ".join(clues["tier_hints"]) if clues["tier_hints"] else "Single standard offer"
         proj_str = ", ".join(clues["project_candidates"][:2]) if clues["project_candidates"] else "None explicit"
 
+        name_note = ""
+        if v_name and v_name != filename:
+            name_note = f"  • USER-DECLARED VENDOR COMPANY NAME: '{v_name}' (Authoritative)\n"
+            vendor_declarations.append(f"• Submission {idx} ('{filename}') is from: '{v_name}'")
+
         candidate_clues_summary.append(
             f"Submission {idx} (File: {filename}):\n"
+            f"{name_note}"
             f"  • Emails: {email_str} (Domains: {domain_str})\n"
             f"  • Quote References: {ref_str}\n"
             f"  • Project Indicators: {proj_str}\n"
@@ -43,23 +121,36 @@ def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict]) -> dict:
 
     clues_text = "\n\n".join(candidate_clues_summary)
     spec_proj_hints = ", ".join(spec_clues["project_candidates"][:3]) if spec_clues["project_candidates"] else "Check spec text"
+    pref_instructions = build_user_preferences_instructions(user_preferences)
+
+    specifier_note = f"\n- Specifier / Consulting Engineering Firm: '{specifier_company}' (Consulting Engineer)." if specifier_company else ""
+    vendor_decl_str = "\n   ".join(vendor_declarations) if vendor_declarations else ""
+    if vendor_decl_str:
+        vendor_id_rule = f"""2. AUTHORITATIVE VENDOR IDENTITY & SPECIFIER FIRM:
+   {specifier_note}
+   - The user has provided authoritative company names for the following submissions:
+   {vendor_decl_str}
+   - You MUST use these exact vendor company names as the column headers in 'offer_columns' and in all tables, scores, and discrepancies (unless splitting a vendor's offer into Premium vs Budget, in which case use '[Vendor] (Premium)' and '[Vendor] (Budget)')."""
+    else:
+        vendor_id_rule = f"""2. IN-DOCUMENT VENDOR IDENTITY EXTRACTION:
+   {specifier_note}
+   - DO NOT rely on arbitrary uploaded file names (e.g. 'Offer1.pdf', 'quote_1.pdf', or generic titles).
+   - Use internal document clues (document letterheads, logos, email domain names, signature blocks, quotation references) to identify the real company name (e.g., 'ThermOpac', 'Carrier', 'Trane', 'Daikin', 'AirCraft', 'ClimaCore').
+   - Distinguish the equipment vendor/manufacturer from the client or engineer."""
 
     user_prompt = f"""
 You are an independent Principal HVAC Consulting Engineer conducting a professional technical compliance audit.
 
 Objective:
 Audit the Vendor Submission(s) against the Engineering Specification. Normalize engineering units naturally (e.g., l/s to m³/s, kW, Pa, °C DB/WB) to allow clean side-by-side comparison.
-
+{pref_instructions}
 Adjudication Intelligence Requirements:
 1. ACCURATE PROJECT NAME IDENTIFICATION:
    - Identify the overarching Project Name common across the specification and vendor quotations (e.g., "SASOL Phase 1 Expansion", "Msukligwe Ermelo", "DATA HALL 1 & UPS ROOM - CRAH UPGRADE").
    - Spec Project Hints: {spec_proj_hints}
    - Set "project_name" at the top level of the JSON.
 
-2. IN-DOCUMENT VENDOR IDENTITY EXTRACTION:
-   - DO NOT rely on arbitrary uploaded file names (e.g. 'Offer1.pdf', 'quote_1.pdf', or generic titles).
-   - Use internal document clues (document letterheads, logos, email domain names, signature blocks, quotation references) to identify the real company name (e.g., "ThermOpac", "Carrier", "Trane", "Daikin", "AirCraft", "ClimaCore").
-   - Distinguish the equipment vendor/manufacturer from the client or engineer (e.g. client may be Sasol or CRC Eng; vendor is the quoting entity).
+{vendor_id_rule}
 
 3. MULTI-VENDOR & SPLIT OFFER COLUMNS:
    - Each vendor offer MUST have its own column in the audit matrix.
@@ -86,6 +177,10 @@ Adjudication Intelligence Requirements:
    - 'Marginal': Feature listed only as optional add-on, oversizing >15%, delivery to hub only, or off-loading omitted by OEM.
    - 'Non-Compliant': Substantive deficit (< -5%), invalid design conditions, or missing core components.
 
+7. SPECIFICATION AMBIGUITY & HUMAN VERIFICATION FLAGGING:
+   - Carefully analyze the specification for ambiguous, contradictory, incomplete, or vague engineering duties (e.g., conflicting fluid temperatures, unspecified static pressure baselines, ambiguous airflow metrics, missing demarcation for electrical starters/VSDs or controls, or missing ambient baselines).
+   - Flag every ambiguity in 'specification_ambiguities' so the human engineer can verify or issue a formal addendum.
+
 --- EXTRACTED METADATA CLUES ---
 {clues_text}
 
@@ -99,6 +194,14 @@ Return your evaluation strictly as a valid JSON object matching this structure:
   "project_name": "Accurately Identified Project Name",
   "offer_columns": ["Column 1", "Column 2"],
   "executive_summary": "Objective executive summary comparing vendor submissions against specification requirements.",
+  "specification_ambiguities": [
+    {{
+      "item": "Affected Equipment Tag or Parameter",
+      "ambiguity": "Precise description of the specification ambiguity or conflicting requirement",
+      "impact": "Practical impact on equipment sizing, pricing, or compliance",
+      "verification_action": "Specific human clarification action required by consulting engineer"
+    }}
+  ],
   "scope_table": [
     {{
       "Parameter": "Scope of Supply",
@@ -138,7 +241,7 @@ Return your evaluation strictly as a valid JSON object matching this structure:
     
     try:
         response = client.chat.completions.create(
-            model=LLM_MODEL,
+            model=model_name,
             messages=[{"role": "user", "content": user_prompt}],
             temperature=0.1
         )
@@ -191,6 +294,43 @@ Return your evaluation strictly as a valid JSON object matching this structure:
         data["project_name"] = candidate or "HVAC Engineering Project"
     else:
         data["project_name"] = str(proj).strip()
+
+    if specifier_company:
+        data["specifier_company"] = specifier_company.strip()
+
+    # Remap columns and tables to user-confirmed vendor names if declared
+    vendor_override_map = {}
+    for v in vendor_offers:
+        vn = v.get("vendor_name", "").strip()
+        fn = v.get("filename", "").strip()
+        if vn and fn and vn != fn:
+            vendor_override_map[fn] = vn
+            vendor_override_map[os.path.splitext(fn)[0]] = vn
+
+    if vendor_override_map:
+        def remap_col(c):
+            clean_c = clean_company_name(c)
+            for old_k, new_k in vendor_override_map.items():
+                if old_k.lower() in clean_c.lower():
+                    if "(" in clean_c and ")" in clean_c:
+                        tier = clean_c[clean_c.find("("):clean_c.rfind(")")+1]
+                        return f"{new_k} {tier}".strip()
+                    return new_k
+            return clean_c
+
+        if "offer_columns" in data and isinstance(data["offer_columns"], list):
+            data["offer_columns"] = [remap_col(c) for c in data["offer_columns"]]
+        if "scope_table" in data and isinstance(data["scope_table"], list):
+            for row in data["scope_table"]:
+                if "vendors" in row and isinstance(row["vendors"], dict):
+                    row["vendors"] = {remap_col(k): val for k, val in row["vendors"].items()}
+        if "units" in data and isinstance(data["units"], list):
+            for u in data["units"]:
+                for p in u.get("parameters", []):
+                    if "vendors" in p and isinstance(p["vendors"], dict):
+                        p["vendors"] = {remap_col(k): val for k, val in p["vendors"].items()}
+                if "discrepancies" in u and isinstance(u["discrepancies"], dict):
+                    u["discrepancies"] = {remap_col(k): val for k, val in u["discrepancies"].items()}
 
     # Discover and sanitize offer column names
     raw_columns = data.get("offer_columns", [])
@@ -265,5 +405,173 @@ def calculate_vendor_scores(data: dict, vendor_names: list):
 def compare_spec_with_offer(spec_text: str, offer_text: str) -> dict:
     """Backward compatibility wrapper for single offer analysis."""
     return compare_spec_with_offers(spec_text, [{"vendor_name": "Vendor Offer", "text": offer_text}])
+
+
+def extract_document_parameters(doc_text: str, filename: str = "", doc_type_hint: str = "auto", user_preferences: dict = None) -> dict:
+    """
+    Extracts all relevant HVAC and engineering parameters from a single specification or vendor quotation.
+    Summarises and tabulates the data without comparison, grouping parameters by physical equipment units.
+    """
+    client, model_name = get_ai_client()
+    
+    clues = extract_document_clues(doc_text, filename)
+    email_str = ", ".join(clues["emails"]) if clues["emails"] else "None found"
+    domain_str = ", ".join(clues["domains"]) if clues["domains"] else "None"
+    ref_str = ", ".join(clues["quote_refs"]) if clues["quote_refs"] else "None"
+    proj_str = ", ".join(clues["project_candidates"][:2]) if clues["project_candidates"] else "None explicit"
+
+    hint_instruction = ""
+    if doc_type_hint and doc_type_hint.lower() != "auto":
+        hint_instruction = f"\nUser Document Nature Hint: Treat this document specifically as a '{doc_type_hint}'."
+    
+    pref_instructions = build_user_preferences_instructions(user_preferences)
+
+    user_prompt = f"""
+You are an independent Principal HVAC Consulting Engineer.
+
+Objective:
+Extract all relevant HVAC, mechanical, electrical, and control engineering parameters specified in this single technical document (which may be an Engineering Specification / Equipment Schedule or a Vendor Quotation / Tender Submission).
+Normalise engineering units cleanly (e.g. l/s, m³/s, kW, Pa, °C DB/WB, mm, V/Ph/Hz, dB(A), kg).
+
+IMPORTANT:
+This is a STANDALONE extraction. Do NOT perform any comparative scoring, compliance pass/fail, or supplier adjudication.
+Present all extracted information in an authoritative, structured, summarised, and tabulated format.
+{hint_instruction}
+{pref_instructions}
+
+Document Clues:
+• Source File: {filename}
+• Detected Email Domains: {domain_str} ({email_str})
+• Detected References: {ref_str}
+• Potential Project Names: {proj_str}
+
+Adjudication & Extraction Guidelines:
+1. PROJECT & ENTITY IDENTIFICATION:
+   - Identify Project Name / Facility / Site (e.g., "SASOL Phase 1 Expansion", "Mooirivier Mall Upgrades").
+   - Identify Document Nature: "Specification" or "Vendor Quotation".
+   - Identify Entity Name: Consulting Engineering firm or Vendor / Manufacturer (e.g., "ThermOpac", "Carrier", "Trane").
+   - Identify Document Reference / Quote Number / Revision.
+
+2. EXECUTIVE TECHNICAL SUMMARY:
+   - Provide an objective, comprehensive narrative summary of the document.
+   - Use bold markdown headings (e.g., **Document Overview:**, **Salient HVAC Duties:**, **Scope & Demarcation:**).
+
+3. GENERAL SCOPE & DEMARCATION MATRIX:
+   - Tabulate general installation, electrical supply, controls / BMS interface, refrigerant type, piping connections, rigging, delivery, warranty, and demarcation items.
+   - Each row: "Parameter", "Value", "Notes".
+
+4. MULTI-UNIT EQUIPMENT SCHEDULES:
+   - Break down equipment by physical unit / schedule (e.g., "CRAH Units", "AHU-01", "Chiller CH-01").
+   - For EACH unit, extract an exhaustive list of all relevant HVAC parameters:
+     - Airflows (l/s, m³/s), static pressures (ESP, TSP in Pa).
+     - Thermal duties (total cooling, sensible cooling, heating in kW).
+     - Coil metrics (air temps °C DB/WB, fluid temps, rows, fin spacing, pressure drops).
+     - Fans & motors (EC plug, motor kW, RPM, SFP).
+     - Electrical parameters (V, Ph, Hz, FLA, MCA, MOCP).
+     - Acoustic data (sound pressure dB(A), sound power LW).
+     - Dimensions & weights (L x W x H mm, weight kg).
+     - Refrigeration (refrigerant, circuits, compressors).
+     - Filtration & casing (pre-filter, final filter, casing thickness, leakage).
+     - Controls (integrated controller, BACnet/Modbus card).
+   - For each parameter: "Parameter", "Value", "Notes".
+   - For EACH unit: "technical_notes" (list of factual engineering notes, features, or observations).
+
+OUTPUT SCHEMA (STRICT JSON ONLY, NO WRAPPER TEXT):
+{{
+  "project_name": "Identified Project Name",
+  "document_type": "Specification" or "Vendor Quotation",
+  "document_title": "Identified Document Title / Reference",
+  "entity_name": "Identified Company / Engineer / Vendor Name",
+  "reference_number": "Reference Number or 'N/A'",
+  "executive_summary": "**Document Overview:** ...\\n**Salient HVAC Duties:** ...",
+  "scope_table": [
+    {{
+      "Parameter": "Scope of Supply / Demarcation / Power Supply",
+      "Value": "Detailed value / scope description",
+      "Notes": "Criteria / Demarcation notes"
+    }}
+  ],
+  "units": [
+    {{
+      "unit_name": "Equipment Unit Tag & Description",
+      "parameters": [
+        {{
+          "Parameter": "Parameter Name",
+          "Value": "Normalized Value with Units",
+          "Notes": "Engineering criteria or operating condition"
+        }}
+      ],
+      "technical_notes": [
+        "Factual engineering note regarding construction or options."
+      ]
+    }}
+  ]
+}}
+
+DOCUMENT TEXT TO EXTRACT:
+{doc_text}
+"""
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": user_prompt}],
+            temperature=0.1
+        )
+        
+        if hasattr(response, 'choices'):
+            choices_list = response.choices
+            if isinstance(choices_list, list) and len(choices_list) > 0:
+                item = choices_list[0]
+                if hasattr(item, 'message'):
+                    raw_content = item.message.content
+                elif isinstance(item, dict) and 'message' in item:
+                    msg = item['message']
+                    raw_content = msg.get('content', str(msg)) if isinstance(msg, dict) else str(msg)
+                else:
+                    raw_content = getattr(item, 'text', str(item))
+            else:
+                raw_content = response.choices.message.content
+        elif isinstance(response, list) and len(response) > 0:
+            item = response[0]
+            if hasattr(item, 'message'):
+                raw_content = item.message.content
+            else:
+                raw_content = item.get('message', {}).get('content', str(item))
+        else:
+            raw_content = str(response)
+            
+    except Exception as e:
+        raise Exception(f"API Interface Exception: {str(e)}")
+
+    try:
+        data = json.loads(raw_content)
+    except Exception:
+        json_match = re.search(r"\{.*\}", raw_content, re.DOTALL)
+        if json_match:
+            data = json.loads(json_match.group(0))
+        else:
+            raise ValueError(f"Failed to parse LLM extraction response: {raw_content[:500]}")
+
+    # Fallback / sanitize project name
+    proj = data.get("project_name")
+    if not proj or str(proj).strip().lower() in ["unknown", "accurately identified project name", "project", "none"]:
+        candidate = clues["project_candidates"][0] if clues.get("project_candidates") else ""
+        data["project_name"] = candidate or (clean_company_name(filename) if filename else "HVAC Engineering Project")
+    else:
+        data["project_name"] = str(proj).strip()
+
+    # Fallback for entity name
+    if not data.get("entity_name") or str(data.get("entity_name")).strip().lower() in ["unknown", "none", "entity"]:
+        if clues.get("domains"):
+            data["entity_name"] = clean_company_name(clues["domains"][0])
+        elif filename:
+            data["entity_name"] = clean_company_name(filename)
+        else:
+            data["entity_name"] = "Engineering Document"
+    else:
+        data["entity_name"] = clean_company_name(data["entity_name"])
+
+    return data
+
 
 

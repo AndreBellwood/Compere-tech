@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+html, body, [data-testid="stApp"], .stApp {
+    background-color: #0B1120 !important;
+    color: #F8FAFC !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.stApp::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 15%; right: 15%; height: 380px;
+    background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.15), transparent 70%);
+    pointer-events: none; z-index: 0;
+}
+
+.main .block-container { position: relative; z-index: 1; padding-top: 1.25rem !important; }
+h1, h2, h3, h4, h5, h6 { color: #FFFFFF !important; font-weight: 700 !important; }
+p, span, label, div { color: #E2E8F0; }
+.stCaption, [data-testid="stCaptionContainer"] { color: #94A3B8 !important; }
+
+.stButton > button, div[data-testid="stFileUploader"] section button {
+    font-size: 15px !important; font-weight: 600 !important;
+    color: #F1F5F9 !important; border: 1px solid #334155 !important;
+    border-radius: 8px !important; padding: 0.6rem 1.3rem !important;
+    background-color: #1E293B !important; transition: all 0.2s !important;
+}
+.stButton > button:hover, div[data-testid="stFileUploader"] section button:hover {
+    color: #FFFFFF !important; border-color: #38BDF8 !important;
+    background-color: #334155 !important;
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25) !important;
+}
+
+button[kind="primary"], .stButton > button[kind="primary"], button[data-testid="baseButton-primary"] {
+    background: linear-gradient(135deg, #0284C7 0%, #0EA5E9 100%) !important;
+    border: 1.5px solid #38BDF8 !important; border-radius: 8px !important;
+    font-size: 17px !important; font-weight: 800 !important;
+    box-shadow: 0 4px 18px rgba(14, 165, 233, 0.4) !important;
+    padding: 0.75rem 1.6rem !important;
+}
+button[kind="primary"] *, .stButton > button[kind="primary"] *, button[data-testid="baseButton-primary"] * {
+    color: #FFFFFF !important;
+}
+button[kind="primary"]:hover, .stButton > button[kind="primary"]:hover, button[data-testid="baseButton-primary"]:hover {
+    background: linear-gradient(135deg, #0369A1 0%, #0284C7 100%) !important;
+    border-color: #7DD3FC !important;
+    box-shadow: 0 6px 22px rgba(14, 165, 233, 0.55) !important;
+}
+
+.stDownloadButton > button, div[data-testid="stDownloadButton"] button {
+    background: linear-gradient(135deg, #059669 0%, #10B981 100%) !important;
+    color: #FFFFFF !important; border: 1.5px solid #34D399 !important;
+    border-radius: 8px !important; font-size: 17px !important; font-weight: 800 !important;
+    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.35) !important;
+    padding: 0.75rem 1.6rem !important;
+div[data-baseweb="select"] > div {
+    border: 1px solid #334155 !important; border-radius: 6px !important;
+    background-color: #1E293B !important; color: #FFFFFF !important;
+}
+div[data-baseweb="select"] span { color: #FFFFFF !important; }
+div[data-baseweb="popover"], ul[role="listbox"], div[data-baseweb="menu"] {
+    border: 1.5px solid #38BDF8 !important; border-radius: 8px !important;
+    background-color: #0F172A !important;
+}
+li[role="option"] {
+    color: #E2E8F0 !important; background-color: #0F172A !important;
+}
+li[role="option"]:hover, li[role="option"][aria-selected="true"] {
+    background-color: #1E293B !important; color: #38BDF8 !important; font-weight: 700 !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#mode-section-marker),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#mode-section-marker) > div,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#pref-section-marker),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#pref-section-marker) > div,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#upload-section-marker),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#upload-section-marker) > div {
+    background-color: #0F172A !important; border: 1px solid #1E293B !important;
+    border-radius: 12px !important; padding: 1.25rem 1.4rem !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#pref-subcard-marker),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#pref-subcard-marker) > div {
+    background-color: #1E293B !important; border: 1px solid #334155 !important;
+    border-radius: 8px !important; padding: 0.75rem 0.95rem !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#pref-section-marker) label[data-testid="stWidgetLabel"] p,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#pref-section-marker) label[data-testid="stWidgetLabel"] span {
+    font-size: 15pt !important; font-weight: 700 !important; color: #F8FAFC !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#mode-section-marker) h3,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#pref-section-marker) h3,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(#upload-section-marker) h3 {
+    margin-top: 0 !important; margin-bottom: 0.5rem !important; color: #FFFFFF !important; font-weight: 700 !important;
+}
+
+[data-testid="stFileUploaderDropzone"], [data-testid="stFileUploadDropzone"],
+div[data-testid="stFileUploader"] section, div[data-testid="stFileUploader"] > div > section {
+    border: 2px dashed #334155 !important; background-color: #131D31 !important;
+    border-radius: 10px !important; padding: 1.6rem !important;
+}
+[data-testid="stFileUploaderDropzone"]:hover, [data-testid="stFileUploadDropzone"]:hover,
+div[data-testid="stFileUploader"] section:hover, div[data-testid="stFileUploader"] > div > section:hover {
+    border: 2px dashed #38BDF8 !important; background-color: #1A2642 !important;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.15) !important;
+}
+div[data-testid="stFileUploader"] section span, div[data-testid="stFileUploader"] section div, div[data-testid="stFileUploader"] section small {
+    color: #94A3B8 !important;
+}
+
+[data-testid="stMetric"] {
+    background-color: #0F172A !important; border: 1px solid #1E293B !important;
+    border-radius: 10px !important; padding: 1rem !important;
+}
+[data-testid="stMetricLabel"] p { color: #94A3B8 !important; font-weight: 600 !important; }
+[data-testid="stMetricValue"] div { color: #38BDF8 !important; font-weight: 800 !important; }
+[data-testid="stDataFrame"], .stTable {
+    border: 1px solid #1E293B !important; border-radius: 8px !important; background-color: #0F172A !important;
+}
+hr { border-color: #1E293B !important; }
+.stAlert { background-color: #0F172A !important; border: 1px solid #334155 !important; color: #F8FAFC !important; }
+
+}

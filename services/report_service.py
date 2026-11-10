@@ -23,6 +23,21 @@ def calculate_oadate(dt=None) -> float:
     delta = dt - epoch
     return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400.0
 
+def format_oadate_serial(dt=None) -> str:
+    """
+    Generates an 8-digit serial number based on the OADate:
+    - 8 digits total (day count + fractional day digits)
+    - No decimal point
+    - Dash after 4 digits: 'XXXX-XXXX'
+    """
+    oadate_val = calculate_oadate(dt)
+    raw = f"{oadate_val:.3f}".replace(".", "")
+    if len(raw) > 8:
+        raw = raw[:8]
+    elif len(raw) < 8:
+        raw = raw.ljust(8, '0')
+    return f"{raw[:4]}-{raw[4:8]}"
+
 def init_pdf_fonts():
     """
     Registers Arial Narrow font family if available on the system.
@@ -59,6 +74,7 @@ class NumberedCanvas(canvas.Canvas):
     project_name = ""
     date_str = ""
     oadate_str = ""
+    report_type_label = "Technical Compliance Ledger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -95,7 +111,7 @@ class NumberedCanvas(canvas.Canvas):
 
         self.setFont(FONT_NORMAL, 10)
         self.setFillColor(colors.HexColor("#4A5568"))
-        pipe_str = "|   Technical Compliance Ledger"
+        pipe_str = f"|   {self.report_type_label}"
         self.drawString(left_x + compere_w + 5, header_y, pipe_str)
         left_total_w = left_x + compere_w + 5 + self.stringWidth(pipe_str, FONT_NORMAL, 10)
 
@@ -121,15 +137,17 @@ class NumberedCanvas(canvas.Canvas):
         self.setLineWidth(0.5)
         self.line(left_x, line_y, right_x, line_y)
 
-        # Sub-header on top right just below the header dividing line (>= 10 pt)
-        self.setFont(FONT_NORMAL, 10)
-        self.setFillColor(colors.HexColor("#4A5568"))
-        if self._pageNumber == 1:
-            if self.date_str:
-                self.drawRightString(right_x, sub_hdr_y, f"Date: {self.date_str}")
-        else:
-            if self.oadate_str:
-                self.drawRightString(right_x, sub_hdr_y, f"Serial: {self.oadate_str}")
+        # Sub-header on top right just below the header dividing line (Page 1 Date stamp)
+        if self._pageNumber == 1 and self.date_str:
+            self.setFont(FONT_NORMAL, 10)
+            self.setFillColor(colors.HexColor("#4A5568"))
+            self.drawRightString(right_x, sub_hdr_y, f"Date: {self.date_str}")
+
+        # Serial number on page 2 onwards: bottom right just above the footer (8 pt font)
+        if self._pageNumber > 1 and self.oadate_str:
+            self.setFont(FONT_NORMAL, 8)
+            self.setFillColor(colors.HexColor("#718096"))
+            self.drawRightString(right_x, footer_line_y + 4, f"Serial: {self.oadate_str}")
 
         # Bottom decorative rule line
         self.line(left_x, footer_line_y, right_x, footer_line_y)
@@ -235,6 +253,58 @@ def build_leaderboard_table(vendor_scores, usable_w):
         ('RIGHTPADDING', (0, 0), (-1, -1), 5),
     ]))
     return t
+
+def build_ambiguities_table(ambiguities: list, usable_w: float):
+    """Renders amber-highlighted specification ambiguities table for human engineering review."""
+    styles = getSampleStyleSheet()
+    hdr_style = ParagraphStyle(
+        'AmbHdr', parent=styles['Normal'], fontName=FONT_BOLD,
+        fontSize=10, leading=13, textColor=colors.white
+    )
+    cell_style = ParagraphStyle(
+        'AmbCell', parent=styles['Normal'], fontName=FONT_NORMAL,
+        fontSize=10, leading=13, textColor=colors.HexColor("#0F172A")
+    )
+    action_style = ParagraphStyle(
+        'AmbAction', parent=styles['Normal'], fontName=FONT_BOLD,
+        fontSize=10, leading=13, textColor=colors.HexColor("#92400E")
+    )
+
+    table_data = [[
+        Paragraph("<b>Scope Area / Item</b>", hdr_style),
+        Paragraph("<b>Ambiguity in Specification</b>", hdr_style),
+        Paragraph("<b>Potential Impact</b>", hdr_style),
+        Paragraph("<b>Human Clarification Required</b>", hdr_style)
+    ]]
+
+    for a in ambiguities:
+        table_data.append([
+            Paragraph(f"<b>{a.get('item', 'Specification')}</b>", cell_style),
+            Paragraph(a.get("ambiguity", ""), cell_style),
+            Paragraph(a.get("impact", ""), cell_style),
+            Paragraph(a.get("verification_action", ""), action_style)
+        ])
+
+    w_item = usable_w * 0.22
+    w_amb = usable_w * 0.32
+    w_imp = usable_w * 0.20
+    w_act = usable_w * 0.26
+    col_widths = [w_item, w_amb, w_imp, w_act]
+
+    t = Table(table_data, colWidths=col_widths, repeatRows=1)
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#B45309")),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#FDE68A")),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#FEF3C7")]),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    return t
+
 
 
 def build_parameter_tables(rows, vendor_scores, styles, cell_style, header_style, usable_w=535, is_landscape=False):
@@ -393,15 +463,14 @@ def generate_pdf_report(output_filename, data, logo_path=None):
     margin = 30
     usable_w = pw - (margin * 2)
 
-    # Date and OADate serial calculation
+    # Date and OADate serial calculation (8 digits, no decimal, dash after 4 digits: XXXX-XXXX)
     dt_now = datetime.now()
     date_str = f"{dt_now.day} {dt_now.strftime('%B %Y')}"
-    oadate_val = calculate_oadate(dt_now)
-    oadate_str = f"{oadate_val:.1f}"
+    oadate_str = format_oadate_serial(dt_now)
 
     doc = SimpleDocTemplate(
         output_filename, pagesize=pagesize,
-        leftMargin=margin, rightMargin=margin, topMargin=58, bottomMargin=48
+        leftMargin=margin, rightMargin=margin, topMargin=58, bottomMargin=52
     )
     story = []
     styles = getSampleStyleSheet()
@@ -473,6 +542,9 @@ def generate_pdf_report(output_filename, data, logo_path=None):
     meta_parts = []
     if project_title and project_title.lower() != "unknown":
         meta_parts.append(f"<b>Project:</b> {project_title}")
+    specifier = str(data.get("specifier_company", "")).strip()
+    if specifier and specifier.lower() not in ["none", "unknown"]:
+        meta_parts.append(f"<b>Specifier:</b> {specifier}")
     meta_parts.append(f"<b>Date:</b> {date_str}")
     meta_text = " &nbsp;&nbsp;|&nbsp;&nbsp; ".join(meta_parts)
     story.append(Paragraph(meta_text, proj_style))
@@ -494,6 +566,13 @@ def generate_pdf_report(output_filename, data, logo_path=None):
         story.append(Paragraph("Vendor Compliance Adjudication Leaderboard", h2_style))
         story.append(Spacer(1, 3))
         story.append(build_leaderboard_table(v_scores, usable_w))
+        story.append(Spacer(1, 6))
+
+    ambiguities = data.get("specification_ambiguities", [])
+    if ambiguities:
+        story.append(Paragraph("Specification Ambiguities & Human Clarifications Required", h2_style))
+        story.append(Spacer(1, 3))
+        story.append(build_ambiguities_table(ambiguities, usable_w))
         story.append(Spacer(1, 6))
         
     # PAGE 1 ENDS HERE
@@ -554,3 +633,205 @@ def generate_pdf_report(output_filename, data, logo_path=None):
     ProjectNumberedCanvas.oadate_str = oadate_str
 
     doc.build(story, canvasmaker=ProjectNumberedCanvas)
+
+
+
+def build_extraction_table(rows, cell_style, header_style, usable_w=535, val_header="Specified / Quoted Value"):
+    """
+    Constructs a clean 3-column parameter table for standalone specification or quotation extraction:
+    Columns: Parameter (145 pt), Specified / Quoted Value (170 pt), Engineering Details & Criteria (220 pt) = 535 pt.
+    All text is strictly >= 10 pt font.
+    """
+    if not rows:
+        return None
+
+    w_param = 145
+    w_val = 170
+    w_notes = usable_w - (w_param + w_val)
+
+    table_data = [[
+        Paragraph("<b>Parameter</b>", header_style),
+        Paragraph(f"<b>{val_header}</b>", header_style),
+        Paragraph("<b>Engineering Details & Criteria</b>", header_style)
+    ]]
+
+    for r in rows:
+        p_name = r.get("Parameter", "")
+        v_val = r.get("Value", r.get("Spec_Requirement", r.get("Offer_Value", "")))
+        notes = r.get("Notes", r.get("Criteria", r.get("Comments", "")))
+
+        table_data.append([
+            make_cell(p_name, cell_style),
+            make_cell(v_val, cell_style),
+            make_cell(notes, cell_style)
+        ])
+
+    t = Table(table_data, colWidths=[w_param, w_val, w_notes])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A365D")),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    return t
+
+
+
+def generate_extraction_pdf_report(output_filename, data, logo_path=None):
+    """
+    Generates a corporate A4 portrait PDF parameter schedule for standalone specification or quotation extraction.
+    Adheres strictly to the identical design language of COMPèRE:
+    - Running header with OADate serial, project title, and confidentiality footer.
+    - All text strictly >= 10 pt (except the 8 pt OADate serial on Page 2+ footer).
+    - Summarised and tabulated without comparative pass/fail scoring.
+    """
+    pagesize = portrait(A4)
+    pw, ph = pagesize
+    margin = 30
+    usable_w = pw - (margin * 2)
+
+    dt_now = datetime.now()
+    date_str = f"{dt_now.day} {dt_now.strftime('%B %Y')}"
+    oadate_str = format_oadate_serial(dt_now)
+
+    doc = SimpleDocTemplate(
+        output_filename, pagesize=pagesize,
+        leftMargin=margin, rightMargin=margin, topMargin=58, bottomMargin=52
+    )
+    story = []
+    styles = getSampleStyleSheet()
+
+    cell_style = ParagraphStyle(
+        'ExCell', parent=styles['Normal'], fontName=FONT_NORMAL,
+        fontSize=10, leading=13, textColor=colors.HexColor("#2D3748")
+    )
+    header_style = ParagraphStyle(
+        'ExHeader', parent=styles['Normal'], fontName=FONT_BOLD,
+        fontSize=10, leading=13, textColor=colors.whitesmoke
+    )
+    unit_title_style = ParagraphStyle(
+        'ExUTitle', parent=styles['Heading1'], fontName=FONT_BOLD,
+        fontSize=13, leading=16, textColor=colors.HexColor("#1A365D"), spaceAfter=3
+    )
+    exec_style = ParagraphStyle(
+        'ExExecStyle', parent=styles['Normal'], fontName=FONT_NORMAL,
+        fontSize=10, leading=13.5, textColor=colors.HexColor("#2D3748"), spaceAfter=3
+    )
+    h1_style = ParagraphStyle(
+        'ExRepH1', parent=styles['Heading1'], fontName=FONT_BOLD,
+        fontSize=14, leading=18, textColor=colors.HexColor("#1A365D"), spaceAfter=4
+    )
+    h2_style = ParagraphStyle(
+        'ExRepH2', parent=styles['Heading2'], fontName=FONT_BOLD,
+        fontSize=11.5, leading=15, textColor=colors.HexColor("#1A365D"), spaceAfter=3
+    )
+    note_body_style = ParagraphStyle(
+        'ExNoteBody', parent=styles['Normal'], fontName=FONT_NORMAL,
+        fontSize=10, leading=13, textColor=colors.HexColor("#2D3748"), spaceAfter=2
+    )
+    proj_style = ParagraphStyle(
+        'ExProjStyle', parent=styles['Normal'], fontName=FONT_BOLD,
+        fontSize=10.5, leading=14, textColor=colors.HexColor("#1A365D"), spaceAfter=3
+    )
+
+    # ─── PAGE 1: HEADER, METADATA & EXECUTIVE SUMMARY ───
+    if logo_path and os.path.exists(logo_path):
+        with PILImage.open(logo_path) as img:
+            orig_w, orig_h = img.size
+        target_w = usable_w
+        scale = target_w / float(orig_w)
+        target_h = orig_h * scale
+        if target_h > 55:
+            target_h = 55
+            scale = target_h / float(orig_h)
+            target_w = orig_w * scale
+        story.append(Image(logo_path, width=target_w, height=target_h))
+    else:
+        story.append(create_default_banner(styles, usable_w))
+
+    story.append(Spacer(1, 8))
+    doc_type = data.get("document_type", "Engineering Document")
+    rep_title = f"HVAC {doc_type} Parameter Schedule"
+    story.append(Paragraph(rep_title, h1_style))
+    story.append(Spacer(1, 3))
+
+    project_title = str(data.get("project_name", "")).strip() or "HVAC Engineering Project"
+    entity_name = str(data.get("entity_name", "")).strip()
+    ref_num = str(data.get("reference_number", "")).strip()
+
+    meta_parts = [f"<b>Project:</b> {project_title}"]
+    if entity_name and entity_name.lower() not in ["unknown", "none", "entity"]:
+        meta_parts.append(f"<b>Entity:</b> {entity_name}")
+    if ref_num and ref_num.lower() not in ["unknown", "none", "n/a"]:
+        meta_parts.append(f"<b>Ref:</b> {ref_num}")
+    meta_parts.append(f"<b>Date:</b> {date_str}")
+    meta_text = " &nbsp;&nbsp;|&nbsp;&nbsp; ".join(meta_parts)
+    story.append(Paragraph(meta_text, proj_style))
+    story.append(Spacer(1, 4))
+
+    story.append(Paragraph("Executive Technical Summary", h2_style))
+    story.append(Spacer(1, 2))
+
+    exec_raw = str(data.get("executive_summary", "No executive summary provided.")).strip()
+    exec_blocks = [b.strip() for b in exec_raw.split('\n') if b.strip()]
+    for b in exec_blocks:
+        b_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', b)
+        story.append(Paragraph(b_html, exec_style))
+        story.append(Spacer(1, 2))
+    story.append(Spacer(1, 5))
+
+    val_hdr = "Quoted / Offered Value" if "quote" in doc_type.lower() else "Specified Requirement"
+
+    # PAGE 1 ENDS HERE
+    story.append(PageBreak())
+    # ─── PAGE 2: GENERAL SCOPE & DEMARCATION MATRIX ───
+    scope_rows = data.get("scope_table", [])
+    if scope_rows:
+        story.append(Paragraph("General Scope & Demarcation Matrix", h1_style))
+        story.append(Spacer(1, 5))
+        stbl = build_extraction_table(scope_rows, cell_style, header_style, usable_w, val_header=val_hdr)
+        if stbl:
+            story.append(stbl)
+        story.append(Spacer(1, 8))
+
+    # ─── PAGE 3 ONWARDS: EQUIPMENT UNITS ───
+    units = data.get("units", [])
+    if units:
+        for unit in units:
+            story.append(PageBreak())
+            story.append(Paragraph(unit.get("unit_name", "Equipment Unit Schedule"), unit_title_style))
+            story.append(Spacer(1, 5))
+            unit_params = unit.get("parameters", [])
+            if unit_params:
+                story.append(Paragraph("Technical Parameter Matrix", h2_style))
+                story.append(Spacer(1, 3))
+                ptbl = build_extraction_table(unit_params, cell_style, header_style, usable_w, val_header=val_hdr)
+                if ptbl:
+                    story.append(ptbl)
+                story.append(Spacer(1, 6))
+
+            t_notes = unit.get("technical_notes", [])
+            if t_notes:
+                story.append(Paragraph("Technical Notes & Equipment Observations", h2_style))
+                story.append(Spacer(1, 3))
+                if isinstance(t_notes, list):
+                    for n in t_notes:
+                        story.append(Paragraph(f"• {n}", note_body_style))
+                elif isinstance(t_notes, str):
+                    story.append(Paragraph(f"• {t_notes}", note_body_style))
+
+    class ExtractionNumberedCanvas(NumberedCanvas):
+        pass
+
+    ExtractionNumberedCanvas.project_name = project_title
+    ExtractionNumberedCanvas.date_str = date_str
+    ExtractionNumberedCanvas.oadate_str = oadate_str
+    ExtractionNumberedCanvas.report_type_label = "Technical Parameter Schedule"
+
+    doc.build(story, canvasmaker=ExtractionNumberedCanvas)
+
