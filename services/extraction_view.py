@@ -31,8 +31,8 @@ def render_standalone_extraction():
             st.markdown("### 1. Document Upload")
             st.caption("Upload from a folder or simply drag & drop files here.")
             extract_uploads = st.file_uploader(
-                "Specification or Quotation (PDF, Word, Excel, TXT)",
-                type=["pdf", "docx", "xlsx", "xls", "txt", "csv", "rtf", "md"],
+                "Specification or Quotation (PDF, Word, Excel, TXT, Images)",
+                type=["pdf", "docx", "xlsx", "xls", "txt", "csv", "rtf", "md", "png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif"],
                 accept_multiple_files=True,
                 key="extract_uploader",
                 help="Upload from a folder by clicking 'Browse files', or simply drag & drop files directly into this upload area."
@@ -68,7 +68,7 @@ def render_standalone_extraction():
             st.caption("Upload from a folder or simply drag & drop files here.")
             extract_logo_file = st.file_uploader(
                 "Corporate Header / Logo (Optional Image)",
-                type=["png", "jpg", "jpeg"],
+                type=["png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif"],
                 key="extract_logo_uploader",
                 help="Upload from a folder by clicking 'Browse files', or simply drag & drop your corporate header or logo image here."
             )

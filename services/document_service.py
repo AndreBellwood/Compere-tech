@@ -1,9 +1,13 @@
 import os
+import re
 import zipfile
 import xml.etree.ElementTree as ET
 import fitz  # PyMuPDF
 from markitdown import MarkItDown
 import pandas as pd
+import base64
+import io
+from PIL import Image as PILImage
 
 def extract_excel_text(file_path: str) -> str:
     """Reads all sheets from Excel spreadsheets into clean tables."""
@@ -35,14 +39,97 @@ def extract_docx_fallback(file_path: str) -> str:
     except Exception:
         return ""
 
+def extract_image_text(file_path: str) -> str:
+    """
+    Forensically extracts text, tables, and engineering specifications from image files
+    (PNG, JPG, JPEG, WEBP, BMP, TIFF) using multimodal LLM vision.
+    """
+    try:
+        import config
+        from openai import OpenAI
+
+        # 1. Open and validate image with PIL
+        with PILImage.open(file_path) as img:
+            format_ext = os.path.splitext(file_path)[1].lower()
+            if format_ext in ['.jpg', '.jpeg']:
+                save_fmt = 'JPEG'
+                mime = 'image/jpeg'
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    img = img.convert('RGB')
+            elif format_ext == '.webp':
+                save_fmt = 'WEBP'
+                mime = 'image/webp'
+            else:
+                save_fmt = 'PNG'
+                mime = 'image/png'
+
+            # Rescale if excessively large (e.g. > 2400px) to balance detail and API speed
+            max_dim = 2400
+            if max(img.size) > max_dim:
+                ratio = max_dim / float(max(img.size))
+                new_size = (int(img.width * ratio), int(img.height * ratio))
+                img = img.resize(new_size, PILImage.Resampling.LANCZOS)
+
+            buffer = io.BytesIO()
+            img.save(buffer, format=save_fmt)
+            base64_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+        client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
+        prompt = (
+            "You are an expert optical character recognition (OCR) and technical document parsing system. "
+            "Forensically extract ALL text, tables, engineering equipment schedules, model numbers, duties, "
+            "electrical and mechanical parameters, criteria, notes, and annotations from this document image verbatim.\n"
+            "Format tables into clean Markdown tables with columns matching the visual layout.\n"
+            "Do not omit any serial numbers, capacities, pressures, airflows, temperatures, power ratings, or vendor details."
+        )
+
+        response = client.chat.completions.create(
+            model=config.LLM_MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime};base64,{base64_img}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature=0.0
+        )
+        if response.choices and response.choices[0].message.content:
+            return response.choices[0].message.content.strip()
+    except Exception as e:
+        # Fallback via MarkItDown
+        try:
+            md = MarkItDown()
+            res = md.convert(file_path)
+            if res and res.text_content and len(res.text_content.strip()) > 10:
+                return res.text_content.strip()
+        except Exception:
+            pass
+        return f"[Image Document: {os.path.basename(file_path)} - Text extraction note: {str(e)}]"
+
+    return ""
+
 def extract_document_text(file_path: str) -> str:
     """
-    Parses layout text, engineering grid tables, and spreadsheets.
-    Supports PDF, DOCX, XLSX, XLS, CSV, TXT with multi-tier fallbacks.
+    Parses layout text, engineering grid tables, spreadsheets, and document images.
+    Supports PDF, DOCX, XLSX, XLS, CSV, TXT, PNG, JPG, JPEG, WEBP, BMP, TIFF with multi-tier fallbacks.
     """
     ext = os.path.splitext(file_path)[1].lower()
     
-    # 1. First attempt: MarkItDown (Microsoft layout-aware engine)
+    # 1. Image documents via multimodal AI OCR
+    if ext in ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tiff', '.tif']:
+        img_text = extract_image_text(file_path)
+        if img_text:
+            return img_text
+
+    # 2. First attempt: MarkItDown (Microsoft layout-aware engine)
     try:
         md = MarkItDown()
         result = md.convert(file_path)
@@ -51,7 +138,7 @@ def extract_document_text(file_path: str) -> str:
     except Exception:
         pass
 
-    # 2. Format-specific fallbacks
+    # 3. Format-specific fallbacks
     if ext in ['.xlsx', '.xls']:
         text = extract_excel_text(file_path)
         if text:
@@ -70,7 +157,7 @@ def extract_document_text(file_path: str) -> str:
             except Exception:
                 continue
 
-    # 3. PDF Fallback via PyMuPDF (fitz)
+    # 4. PDF Fallback via PyMuPDF (fitz)
     text = ""
     try:
         with fitz.open(file_path) as doc:

@@ -279,66 +279,6 @@ document.addEventListener('scroll', function() {
 </script>
 """, unsafe_allow_html=True)
 
-# ─── A/B TESTING NAVIGATION BANNER (VERSION A) ───
-st.markdown("""
-<aside style="
-    background: #dfe2eb;
-    border: 1.5px solid #8e9db3;
-    border-radius: 8px;
-    padding: 0.6rem 1rem;
-    margin-bottom: 1.25rem;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-">
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="
-            background-color: #1A365D;
-            color: #FFFFFF;
-            border-radius: 9999px;
-            font-size: 11px;
-            font-weight: 800;
-            padding: 2px 10px;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-        ">A/B Testing: Version A</span>
-        <span style="font-size: 13.5px; font-weight: 700; color: #0F172A;">
-            Original Slate Corporate Theme (Active: Port 8501)
-        </span>
-    </div>
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <a href="http://localhost:8502" target="_blank" style="
-            text-decoration: none;
-            font-size: 12.5px;
-            font-weight: 700;
-            color: #FFFFFF;
-            background-color: #1A365D;
-            border: 1.5px solid #0F172A;
-            border-radius: 6px;
-            padding: 0.4rem 0.8rem;
-            transition: all 0.15s;
-        ">
-            Switch to Version B (Corporate Dark Theme) &rarr;
-        </a>
-        <a href="http://localhost:8080" target="_blank" style="
-            text-decoration: none;
-            font-size: 12.5px;
-            font-weight: 700;
-            color: #1A365D;
-            background-color: #FFFFFF;
-            border: 1.5px solid #8e9db3;
-            border-radius: 6px;
-            padding: 0.4rem 0.8rem;
-        ">
-            🌐 Corporate Overview Docs &rarr;
-        </a>
-    </div>
-</aside>
-""", unsafe_allow_html=True)
-
 col_title, col_site_link = st.columns([3, 1])
 with col_title:
     st.title("COMPèRE - HVAC Technical Compliance Terminal")
@@ -493,8 +433,8 @@ with st.container(border=True):
         st.markdown("### 1. Specification")
         st.caption("Upload from a folder or simply drag & drop files here.")
         spec_uploads = st.file_uploader(
-            "Specification Documents (PDF, Word, Excel, TXT)",
-            type=["pdf", "docx", "xlsx", "xls", "txt", "csv", "rtf", "md"],
+            "Specification Documents (PDF, Word, Excel, TXT, Images)",
+            type=["pdf", "docx", "xlsx", "xls", "txt", "csv", "rtf", "md", "png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif"],
             accept_multiple_files=True,
             key="spec_uploader",
             help="Upload from a folder by clicking 'Browse files', or simply drag & drop files directly into this upload area."
@@ -524,8 +464,8 @@ with st.container(border=True):
         st.markdown("### 2. Vendor Offers")
         st.caption("Upload from a folder or simply drag & drop files here.")
         offer_uploads = st.file_uploader(
-            "Vendor Quotations / Offers (PDF, Word, Excel, TXT)",
-            type=["pdf", "docx", "xlsx", "xls", "txt", "csv", "rtf", "md"],
+            "Vendor Quotations / Offers (PDF, Word, Excel, TXT, Images)",
+            type=["pdf", "docx", "xlsx", "xls", "txt", "csv", "rtf", "md", "png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif"],
             accept_multiple_files=True,
             key="offer_uploader",
             help="Upload from a folder by clicking 'Browse files', or simply drag & drop files directly into this upload area."
@@ -566,7 +506,7 @@ with st.container(border=True):
         st.caption("Upload from a folder or simply drag & drop files here.")
         logo_file = st.file_uploader(
             "Corporate Header / Logo (Optional Image)",
-            type=["png", "jpg", "jpeg"],
+            type=["png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif"],
             key="logo_uploader",
             help="Upload from a folder by clicking 'Browse files', or simply drag & drop your corporate header or logo image here."
         )
