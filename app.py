@@ -3,12 +3,14 @@ import os
 import time
 import importlib
 import pandas as pd
+import config
 import services.document_service
 import services.ai_service
 import services.report_service
 import services.extraction_view
 
-# Always reload service modules so edits take effect immediately without module caching
+# Always reload service modules and config so edits take effect immediately
+importlib.reload(config)
 importlib.reload(services.document_service)
 importlib.reload(services.ai_service)
 importlib.reload(services.report_service)
@@ -278,6 +280,44 @@ document.addEventListener('scroll', function() {
 }, true);
 </script>
 """, unsafe_allow_html=True)
+
+# ─── OPTIONAL BETA ACCESS PASSKEY GATE ───
+beta_access_code = getattr(config, "BETA_ACCESS_CODE", "").strip()
+if beta_access_code:
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+
+    if not st.session_state["authenticated"]:
+        col_c1, col_c2, col_c3 = st.columns([1, 1.6, 1])
+        with col_c2:
+            st.markdown("""
+            <div style="background: #FFFFFF; border: 2px solid #1A365D; border-radius: 12px; padding: 2rem; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12); text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;">
+                <div style="width: 52px; height: 52px; line-height: 52px; background: #1A365D; color: #FFFFFF; border-radius: 10px; font-size: 24px; margin: 0 auto 1rem auto;">
+                    🔒
+                </div>
+                <h2 style="color: #0F172A; font-size: 22px; font-weight: 800; margin: 0 0 6px 0;">COMPèRE Beta Evaluation</h2>
+                <p style="color: #475569; font-size: 13.5px; line-height: 1.5; margin: 0 0 1.25rem 0;">
+                    Terminal access is currently restricted to authorized consulting engineering beta partners. Please enter your evaluation passkey.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            with st.form("beta_auth_form"):
+                passkey = st.text_input("Enter Beta Passkey", type="password", placeholder="e.g. COMPERE-BETA-2026")
+                submitted = st.form_submit_button("Unlock Terminal", type="primary", use_container_width=True)
+                if submitted:
+                    if passkey.strip() == beta_access_code:
+                        st.session_state["authenticated"] = True
+                        st.rerun()
+                    else:
+                        st.error("Invalid Beta Passkey. Please verify with your project lead.")
+            st.markdown("""
+            <div style="text-align: center; margin-top: 1rem;">
+                <a href="http://localhost:8080" target="_blank" style="color: #64748B; font-size: 12px; text-decoration: underline;">
+                    View COMPèRE Documentation & Overview &rarr;
+                </a>
+            </div>
+            """, unsafe_allow_html=True)
+        st.stop()
 
 col_title, col_site_link = st.columns([3, 1])
 with col_title:

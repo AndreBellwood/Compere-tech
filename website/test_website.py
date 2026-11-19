@@ -18,7 +18,8 @@ def test_html_content():
     assert "capabilities" in content, "Capabilities section missing"
     assert "workflow" in content, "Workflow section missing"
     assert "confidentiality" in content, "Confidentiality section missing"
-    assert "http://localhost:8501" in content, "Streamlit terminal link missing"
+    assert "http://localhost:8501" in content or "Launch Beta Terminal" in content, "Streamlit terminal link missing"
+    assert "COMPERE_Beta_Test_Pack.zip" in content, "Sample test pack download link missing"
     print(f"[PASS] HTML structure and required sections verified ({len(content)} bytes).")
 
 

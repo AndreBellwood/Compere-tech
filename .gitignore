@@ -1,7 +1,25 @@
+# Environment Secrets
+.env
+.env.*
+.env.local
+!.env.example
+
+# Python bytecode and caches
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 .pytest_cache/
+.coverage
+htmlcov/
+
+# User uploads & staging directories
 uploads/*
 !uploads/.gitkeep
+
+# Temporary test outputs and logs
 test_*.txt
+*.tmp
+*.log
+*.pdf.tmp
+

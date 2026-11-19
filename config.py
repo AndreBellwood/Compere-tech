@@ -3,13 +3,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 1. Update with your actual Google AI Studio API Key
-LLM_API_KEY = os.getenv("LLM_API_KEY", "AQ.Ab8RN6LucLhHSAQ-G9Im-3wHgK4kqobW-3R3BUZdaqBMgEBDoQ")
 
-# 2. Update to the official Gemini OpenAI-compatible base URL
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
+def get_config_val(key: str, default: str = "") -> str:
+    """Retrieves configuration value from Streamlit Secrets or Environment Variables."""
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and key in st.secrets:
+            return str(st.secrets[key])
+    except Exception:
+        pass
+    return os.getenv(key, default)
 
-# 3. Update to a supported Gemini model name (e.g., gemini-2.5-flash or gemini-2.5-pro)
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.8-flash")
+
+# 1. Google AI Studio API Key (loaded securely from .env or st.secrets)
+LLM_API_KEY = get_config_val("LLM_API_KEY", "")
+
+# 2. Gemini OpenAI-compatible base URL
+LLM_BASE_URL = get_config_val("LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
+
+# 3. Supported Gemini model name (default: gemini-2.5-flash)
+LLM_MODEL = get_config_val("LLM_MODEL", "gemini-2.5-flash")
+
+# 4. Optional Beta Passkey protection (leave empty to disable gate)
+BETA_ACCESS_CODE = get_config_val("BETA_ACCESS_CODE", "")
 
 
