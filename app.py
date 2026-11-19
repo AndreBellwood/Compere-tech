@@ -312,7 +312,7 @@ if beta_access_code:
                         st.error("Invalid Beta Passkey. Please verify with your project lead.")
             st.markdown("""
             <div style="text-align: center; margin-top: 1rem;">
-                <a href="http://localhost:8080" target="_blank" style="color: #64748B; font-size: 12px; text-decoration: underline;">
+                <a href="https://compere.tech" target="_blank" style="color: #64748B; font-size: 12px; text-decoration: underline;">
                     View COMPèRE Documentation & Overview &rarr;
                 </a>
             </div>
@@ -325,7 +325,7 @@ with col_title:
 with col_site_link:
     st.markdown("""
     <div style="text-align: right; padding-top: 1.2rem;">
-        <a href="http://localhost:8080" target="_blank" style="
+        <a href="https://compere.tech" target="_blank" style="
             text-decoration: none;
             font-size: 13.5px;
             font-weight: 700;
