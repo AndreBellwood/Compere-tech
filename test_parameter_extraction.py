@@ -9,15 +9,15 @@ from services.report_service import generate_extraction_pdf_report
 def test_extraction_pdf_generation():
     print("=== TEST 1: PDF Generation for Parameter Schedule ===")
     mock_spec_data = {
-        "project_name": "MOOIRIVIER MALL: HVAC UPGRADES",
+        "project_name": "METROPOLITAN CENTER: HVAC UPGRADES",
         "document_type": "Specification",
         "document_title": "Part 5 - Detail Specifications HVAC",
-        "entity_name": "CRC Consulting Engineers",
-        "reference_number": "J1608M-SPEC-01",
+        "entity_name": "Apex Consulting Engineers",
+        "reference_number": "METRO-SPEC-01",
         "executive_summary": (
             "**Document Overview:** Mechanical engineering specification for AHU equipment.\n"
             "**Salient HVAC Duties:** Total cooling duty of 56.4 kW at 5,300 l/s airflow with 250 Pa ESP.\n"
-            "**Demarcation:** All equipment must comply with SANS standards."
+            "**Demarcation:** All equipment must comply with ASHRAE and ISO standards."
         ),
         "scope_table": [
             {
@@ -73,7 +73,7 @@ def test_extraction_pdf_generation():
     assert "Serial:" not in p1_text, "Page 1 must not contain Serial number"
     assert "COMPèRE" in p1_text, "COMPèRE branding must appear on Page 1"
     assert "Technical Parameter Schedule" in p1_text, "Header should indicate Parameter Schedule"
-    assert "MOOIRIVIER MALL" in p1_text, "Project name must appear"
+    assert "METROPOLITAN CENTER" in p1_text, "Project name must appear"
 
     p2_text = doc[1].get_text()
     assert "Serial:" in p2_text, "Page 2 must contain Serial stamp"

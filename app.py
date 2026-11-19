@@ -432,7 +432,7 @@ with col_prefs_box:
                         "GBP - British Pound (£)",
                         "JPY - Japanese Yen (¥)",
                         "USD - US Dollar ($)",
-                        "ZAR - South African Rand (R)"
+                        "ZAR - Rand (R)"
                     ],
                     index=0,
                     key="user_pref_currency",

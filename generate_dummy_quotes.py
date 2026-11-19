@@ -51,7 +51,7 @@ def make_quote_pdf(filepath, vendor_info, overrides, comm_items):
     story.append(bar)
     story.append(Spacer(1, 8))
 
-    proj = "<b>Client:</b> Sasol Synfuels Engineers | <b>Project:</b> SASOL Phase 1 Expansion<br/><b>Equipment Tag:</b> UNIT 2 - Air Handling Unit Package (Approval Pack Spec)"
+    proj = "<b>Client:</b> Apex Consulting Engineers | <b>Project:</b> Horizon Medical Center - Central Plant Modernization<br/><b>Equipment Tag:</b> AHU-02 - Cleanroom Air Handling Unit Package"
     story.append(Paragraph(proj, body))
     story.append(Spacer(1, 8))
 
@@ -78,7 +78,7 @@ def make_quote_pdf(filepath, vendor_info, overrides, comm_items):
     story.append(Spacer(1, 8))
 
     story.append(Paragraph("2. Commercial Pricing & Scope Demarcation", s_title))
-    c_rows = [[Paragraph("<b>Scope Item</b>", t_hdr), Paragraph("<b>Terms / Clarification</b>", t_hdr), Paragraph("<b>Amount (ZAR excl. VAT)</b>", t_hdr)]]
+    c_rows = [[Paragraph("<b>Scope Item</b>", t_hdr), Paragraph("<b>Terms / Clarification</b>", t_hdr), Paragraph("<b>Amount (USD)</b>", t_hdr)]]
     for ci in comm_items:
         c_rows.append([Paragraph(ci[0], t_cell), Paragraph(ci[1], t_cell), Paragraph(f"<b>{ci[2]}</b>", t_cell)])
     t_comm = Table(c_rows, colWidths=[170, 240, 130])
@@ -107,69 +107,70 @@ def main():
     ts_dir = os.path.join(out_dir, "Test_Suite")
     os.makedirs(ts_dir, exist_ok=True)
     
-    # V1: ThermOpac (High Compliance)
+    # V1: AeroClima (High Compliance)
     v1 = {
-        'company': "ThermOpac Air Systems (Pty) Ltd", 'short_name': "ThermOpac",
-        'color': "#1A365D", 'address': "12 Factory Rd, Meadowdale, Johannesburg",
-        'tel': "+27 11 974 8100", 'email': "sales@thermopac.co.za",
-        'quote_ref': "TOP-2026-SAS-002-R1", 'date': "18 March 2026",
-        'rep': "Johan van der Merwe, Pr.Eng"
+        'company': "AeroClima Solutions Inc.", 'short_name': "AeroClima",
+        'color': "#1A365D", 'address': "100 Innovation Way, Chicago, IL 60601",
+        'tel': "+1 (312) 555-0140", 'email': "sales@aeroclimasolutions.com",
+        'quote_ref': "ACS-2026-AHU-001", 'date': "18 March 2026",
+        'rep': "Dr. Robert Mitchell, P.E."
     }
     v1_over = {}
     v1_comm = [
-        ["AHU Unit 2 Manufacture", "Complete with controls & DX coil", "R 348,500.00"],
-        ["Delivery to Site (Sasol)", "Road freight to Secunda roadside", "Included"],
+        ["AHU Unit 2 Manufacture", "Complete with controls & DX coil", "$ 24,500.00"],
+        ["Delivery to Jobsite", "Road freight to site included", "Included"],
         ["Off-loading & Craneage", "By Mechanical Rigging Contractor", "Excluded (By others)"]
     ]
 
     # V2: Carrier (Good Compliance + Optional VRF Kit)
     v2 = {
         'company': "Carrier Commercial HVAC Solutions", 'short_name': "Carrier",
-        'color': "#003A70", 'address': "5 Constantia Park, Midrand, South Africa",
-        'tel': "+27 11 805 8300", 'email': "quotes@carrier-sa.co.za",
-        'quote_ref': "CAR-SEC-2026-904", 'date': "19 March 2026",
-        'rep': "Bradley Peters, B.Sc. Mech"
+        'color': "#003A70", 'address': "One Carrier Place, Farmington, CT 06032",
+        'tel': "+1 (860) 555-0188", 'email': "quotes@carrier-commercial.com",
+        'quote_ref': "CAR-CT-2026-904", 'date': "19 March 2026",
+        'rep': "Bradley Peters, Senior Applications Engineer"
     }
     v2_over = {
         "Supply Airflow": ("5350 l/s", "Minor positive variance (+0.9%)"),
         "Fan Arrangement": ("2x Ziehl-Abegg ECblue 500mm fans", "Equivalent EC plug array"),
         "Cooling Coil Capacity": ("58.2 kW", "Slight over-capacity (+3.2%)"),
         "Secondary Filtration": ("F7 Bag Filter (300mm soft)", "F7 offered instead of F8 (Marginal)"),
-        "VRF Interface Kit": ("Optional Extra (+R 14,800)", "Quoted as optional add-on (Marginal)")
+        "VRF Interface Kit": ("Optional Extra (+$ 1,450)", "Quoted as optional add-on (Marginal)")
     }
     v2_comm = [
-        ["Carrier 39HQ Base AHU", "Standard unit with electrical panel", "R 362,000.00"],
-        ["VRF Interface Kit", "Pre-piped and wired in cubicle", "R 14,800.00 (Optional)"],
-        ["Delivery to Site", "Delivered roadside Secunda", "Included"]
+        ["Carrier 39HQ Base AHU", "Standard unit with electrical panel", "$ 26,800.00"],
+        ["VRF Interface Kit", "Pre-piped and wired in cubicle", "$ 1,450.00 (Optional)"],
+        ["Delivery to Jobsite", "Freight to jobsite included", "Included"]
     ]
 
-    # V3: Trane (Oversized Coil 66.5 kW + Ex-Works)
+    # V3: Trane (Oversized Coil 66.5 kW)
     v3 = {
-        'company': "Trane Commercial Systems South Africa", 'short_name': "Trane",
-        'color': "#D97706", 'address': "Plot 18, Corporate Park South, Midrand",
-        'tel': "+27 11 203 0600", 'email': "tenders@trane.co.za",
-        'quote_ref': "TRN-SAS-AHU2-2026", 'date': "16 March 2026",
-        'rep': "Craig Thomson, Commercial Engineer"
+        'company': "Trane Commercial Systems", 'short_name': "Trane",
+        'color': "#D97706", 'address': "800-E Beaty St, Davidson, NC 28036",
+        'tel': "+1 (704) 555-0192", 'email': "tenders@trane-commercial.com",
+        'quote_ref': "TRN-NC-AHU2-2026", 'date': "16 March 2026",
+        'rep': "Craig Thomson, Commercial Sales Engineer"
     }
     v3_over = {
         "External Static Pressure": ("950 Pa", "Minor deficit (-50 Pa / -5%)"),
         "Cooling Coil Capacity": ("66.5 kW", "Oversized by 17.9% (>15% Marginal/Review)"),
         "DX Coil Materials": ("Galv casing, Cu tubes, Al fins", "Galvanized coil casing (Spec: SS)"),
-        "Panels & Insulation": ("50mm Rockwool (Chromadek/Galv)", "Galvanized inner skin (Spec: Chromadek)"),
+        "Panels & Insulation": ("50mm Mineral Wool (Galv inner)", "Galvanized inner skin (Spec: Stainless)"),
         "Electrical & Controls": ("Isolator & panel (Lights optional)", "Plenum lights & E-Stop optional (Marginal)")
     }
     v3_comm = [
-        ["Trane Unit 2 AHU Package", "Ex-works Johannesburg factory", "R 335,000.00"],
-        ["Plenum Lights & E-Stop Kit", "Chamber lighting + E-Stop push", "R 9,500.00 (Optional)"],
-        ["Transport to Secunda Site", "Factory collection only (Ex-Works)", "Excluded (R 18,500 extra)"]
+        ["Trane Unit 2 AHU Package", "Ex-works factory", "$ 23,500.00"],
+        ["Plenum Lights & E-Stop Kit", "Chamber lighting + E-Stop push", "$ 850.00 (Optional)"],
+        ["Transport to Site", "Jobsite delivery freight", "Excluded ($ 1,200 extra)"]
     ]
+
     # V4: Daikin (Minor Deficits & VRF Excluded)
     v4 = {
-        'company': "Daikin Applied South Africa (Pty) Ltd", 'short_name': "Daikin",
-        'color': "#0097A7", 'address': "15 Kelly Rd, Jet Park, Boksburg",
-        'tel': "+27 11 997 1300", 'email': "quotes@daikinapplied.co.za",
-        'quote_ref': "DA-SEC-26-U2-REV0", 'date': "17 March 2026",
-        'rep': "Markus Engelbrecht, Specialist"
+        'company': "Daikin Applied Systems", 'short_name': "Daikin",
+        'color': "#0097A7", 'address': "13600 Industrial Park Blvd, Minneapolis, MN 55441",
+        'tel': "+1 (763) 555-0120", 'email': "quotes@daikinapplied-us.com",
+        'quote_ref': "DA-MN-26-U2-REV0", 'date': "17 March 2026",
+        'rep': "Marcus Engel, Technical Specialist"
     }
     v4_over = {
         "Supply Airflow": ("5200 l/s", "Minor deficit (-1.9% within tolerance)"),
@@ -178,18 +179,18 @@ def main():
         "VRF Interface Kit": ("Excluded (By VRF contractor)", "Non-compliant (VRF kit omitted)")
     }
     v4_comm = [
-        ["Daikin D-AHU Unit 2", "Manufactured and factory tested", "R 354,200.00"],
-        ["Delivery to Secunda Site", "Delivered roadside Secunda", "Included"],
+        ["Daikin D-AHU Unit 2", "Manufactured and factory tested", "$ 21,900.00"],
+        ["Delivery to Jobsite", "Delivered roadside", "Included"],
         ["VRF Expansion Kit", "Omitted (by VRF vendor)", "Excluded"]
     ]
 
-    # V5: AirCraft (Budget / Non-Compliant Low Score)
+    # V5: ApexAir (Budget / Non-Compliant Low Score)
     v5 = {
-        'company': "AirCraft HVAC Manufacturing (Pty) Ltd", 'short_name': "AirCraft",
-        'color': "#9B1C1C", 'address': "44 Foundry Rd, Silverton, Pretoria",
-        'tel': "+27 12 804 1200", 'email': "sales@aircrafthvac.co.za",
-        'quote_ref': "AC-2026-SAS-T2", 'date': "15 March 2026",
-        'rep': "Leon Botha, Estimator"
+        'company': "Apex Industrial Climate Corp.", 'short_name': "ApexAir",
+        'color': "#9B1C1C", 'address': "500 Commerce Blvd, Dallas, TX 75201",
+        'tel': "+1 (214) 555-0155", 'email': "sales@apexindustrialclimate.com",
+        'quote_ref': "APX-2026-AHU-T2", 'date': "15 March 2026",
+        'rep': "Leon Vance, Estimating Lead"
     }
     v5_over = {
         "Supply Airflow": ("4900 l/s", "Non-compliant deficit (-7.5%)"),
@@ -204,17 +205,17 @@ def main():
         "Sloped Weather Roof": ("Flat roof silicone sealed", "Non-compliant (Flat roof)")
     }
     v5_comm = [
-        ["AirCraft Economy AHU Unit 2", "Bare unit ex-factory Silverton", "R 245,000.00"],
-        ["Electrical Control Panel", "Excluded", "R 35,000.00 (Optional)"],
-        ["Delivery to Site", "Ex-Works factory Pretoria", "Excluded (By client)"]
+        ["ApexAir Economy AHU Unit 2", "Bare unit ex-factory Dallas", "$ 17,500.00"],
+        ["Electrical Control Panel", "Excluded", "$ 2,800.00 (Optional)"],
+        ["Delivery to Site", "Ex-Works factory Dallas", "Excluded (By client)"]
     ]
 
     quotes = [
-        ("Vendor_Quote_1_ThermOpac.pdf", v1, v1_over, v1_comm),
+        ("Vendor_Quote_1_AeroClima.pdf", v1, v1_over, v1_comm),
         ("Vendor_Quote_2_Carrier.pdf", v2, v2_over, v2_comm),
         ("Vendor_Quote_3_Trane.pdf", v3, v3_over, v3_comm),
         ("Vendor_Quote_4_Daikin.pdf", v4, v4_over, v4_comm),
-        ("Vendor_Quote_5_AirCraft.pdf", v5, v5_over, v5_comm)
+        ("Vendor_Quote_5_ApexAir.pdf", v5, v5_over, v5_comm)
     ]
 
     for fname, info, over, comm in quotes:

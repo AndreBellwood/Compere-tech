@@ -256,7 +256,7 @@ def clean_company_name(raw: str) -> str:
     String hygiene to format vendor / offer column labels into clean, readable titles.
     - Strips extensions, file noise, and trailing duplicate revision numbers.
     - Cleans generic corporate legal suffixes while preserving offer qualifications.
-    - Preserves internal camel-case capitalization (e.g. ThermOpac, AirCraft).
+    - Preserves internal camel-case capitalization (e.g. AeroClima, ClimaCore).
     """
     name = str(raw or "").strip()
     if not name:

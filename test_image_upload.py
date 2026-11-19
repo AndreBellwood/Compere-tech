@@ -23,7 +23,7 @@ def test_image_extraction():
     with tempfile.TemporaryDirectory() as tmp_dir:
         img_path = os.path.join(tmp_dir, "spec_schedule.png")
         sample_spec = (
-            "CRC Consulting Engineers - Project Mooirivier Mall\n"
+            "Apex Consulting Engineers - Project Metro Center\n"
             "AHU-01 Technical Specification\n"
             "Supply Airflow: 5300 l/s\n"
             "Total Cooling Capacity: 56.4 kW\n"

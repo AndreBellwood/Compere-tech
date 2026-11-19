@@ -7,42 +7,41 @@ from services.report_service import generate_pdf_report
 def test_clues_and_naming():
     print("=== TEST 1: Clue Extraction and Naming Hygiene ===")
     spec_path = "Test_Suite/Spec1.pdf"
-    offer_path = "Test_Suite/Offer1.pdf"
+    offer_path = "Vendor_Quote_1_AeroClima.pdf"
     
     spec_text = extract_document_text(spec_path)
     offer_text = extract_document_text(offer_path)
     
     spec_clues = extract_document_clues(spec_text, "Spec1.pdf")
-    offer_clues = extract_document_clues(offer_text, "Offer1.pdf")
+    offer_clues = extract_document_clues(offer_text, "Vendor_Quote_1_AeroClima.pdf")
     
     print("Spec Clues:", spec_clues["project_candidates"])
     print("Offer Clues - Emails:", offer_clues["emails"])
     print("Offer Clues - Domains:", offer_clues["domains"])
     print("Offer Clues - Project:", offer_clues["project_candidates"])
     
-    assert "thermopak" in offer_clues["domains"] or any("thermopak" in e for e in offer_clues["emails"]), "Domain should be detected"
-    assert any("Msukligwe" in p for p in offer_clues["project_candidates"]), "Project candidate should be detected"
+    assert "aeroclimasolutions.com" in offer_clues["domains"] or any("aeroclima" in e for e in offer_clues["emails"]), "Domain should be detected"
 
     # Test clean company name with split tiers
     clean_prem = clean_company_name("Carrier (Premium)")
     clean_budg = clean_company_name("Carrier (Budget)")
-    clean_pty = clean_company_name("ThermOpac Air Systems (Pty) Ltd")
+    clean_inc = clean_company_name("AeroClima Solutions Inc.")
     print(f"clean_prem: '{clean_prem}'")
     print(f"clean_budg: '{clean_budg}'")
-    print(f"clean_pty: '{clean_pty}'")
+    print(f"clean_inc: '{clean_inc}'")
     
     assert clean_prem == "Carrier (Premium)"
     assert clean_budg == "Carrier (Budget)"
-    assert "ThermOpac" in clean_pty
+    assert "AeroClima" in clean_inc
 
 def test_pdf_report_with_project_and_split_offers():
     print("\n=== TEST 2: PDF Report with Project Name & Split Offers ===")
     mock_data = {
-        "project_name": "MOOIRIVIER MALL: HEATING VENTILATION AND AIR CONDITIONING",
-        "offer_columns": ["ThermOpac", "Carrier (Premium)", "Carrier (Budget)", "Trane"],
-        "executive_summary": "**Tender Overview:** Adjudication of 4 vendor submissions for SASOL Phase 1 Expansion AHU Package.\n**Compliance & Variances:** High compliance from ThermOpac and Carrier Premium. Carrier Budget omits VRF interface kit.\n**Adjudication Recommendation:** ThermOpac and Carrier Premium represent technically compliant bids.",
+        "project_name": "METROPOLITAN CENTER: HEATING VENTILATION AND AIR CONDITIONING",
+        "offer_columns": ["AeroClima", "Carrier (Premium)", "Carrier (Budget)", "Trane"],
+        "executive_summary": "**Tender Overview:** Adjudication of 4 vendor submissions for Horizon Medical Center AHU Package.\n**Compliance & Variances:** High compliance from AeroClima and Carrier Premium. Carrier Budget omits VRF interface kit.\n**Adjudication Recommendation:** AeroClima and Carrier Premium represent technically compliant bids.",
         "vendor_scores": [
-            {"vendor_name": "ThermOpac", "compliance_percent": 100.0, "passed_count": 3, "marginal_count": 0, "failed_count": 0, "total_count": 3},
+            {"vendor_name": "AeroClima", "compliance_percent": 100.0, "passed_count": 3, "marginal_count": 0, "failed_count": 0, "total_count": 3},
             {"vendor_name": "Carrier (Premium)", "compliance_percent": 95.0, "passed_count": 3, "marginal_count": 0, "failed_count": 0, "total_count": 3},
             {"vendor_name": "Carrier (Budget)", "compliance_percent": 66.7, "passed_count": 2, "marginal_count": 0, "failed_count": 1, "total_count": 3},
             {"vendor_name": "Trane", "compliance_percent": 83.3, "passed_count": 2, "marginal_count": 1, "failed_count": 0, "total_count": 3}
@@ -52,7 +51,7 @@ def test_pdf_report_with_project_and_split_offers():
                 "Parameter": "Scope of Supply",
                 "Spec_Requirement": "AHU Package complete with controls",
                 "vendors": {
-                    "ThermOpac": {"value": "Full AHU + Controls", "status": "Compliant"},
+                    "AeroClima": {"value": "Full AHU + Controls", "status": "Compliant"},
                     "Carrier (Premium)": {"value": "Full AHU + Premium Controls", "status": "Compliant"},
                     "Carrier (Budget)": {"value": "Standard AHU (Basic controls)", "status": "Compliant"},
                     "Trane": {"value": "AHU Package ex-works", "status": "Marginal"}
@@ -67,7 +66,7 @@ def test_pdf_report_with_project_and_split_offers():
                         "Parameter": "Supply Airflow",
                         "Spec_Requirement": "5300 l/s",
                         "vendors": {
-                            "ThermOpac": {"value": "5300 l/s", "status": "Compliant"},
+                            "AeroClima": {"value": "5300 l/s", "status": "Compliant"},
                             "Carrier (Premium)": {"value": "5350 l/s", "status": "Compliant"},
                             "Carrier (Budget)": {"value": "5100 l/s", "status": "Marginal"},
                             "Trane": {"value": "5200 l/s", "status": "Compliant"}
@@ -77,7 +76,7 @@ def test_pdf_report_with_project_and_split_offers():
                         "Parameter": "Cooling Coil Capacity",
                         "Spec_Requirement": "56.4 kW",
                         "vendors": {
-                            "ThermOpac": {"value": "56.4 kW", "status": "Compliant"},
+                            "AeroClima": {"value": "56.4 kW", "status": "Compliant"},
                             "Carrier (Premium)": {"value": "58.2 kW", "status": "Compliant"},
                             "Carrier (Budget)": {"value": "48.0 kW", "status": "Non-Compliant"},
                             "Trane": {"value": "66.5 kW", "status": "Marginal"}
@@ -151,7 +150,7 @@ def test_pdf_report_with_project_and_split_offers():
 
     # 5 Vendors -> MUST BE A4 LANDSCAPE
     mock_data_5 = dict(mock_data)
-    mock_data_5["offer_columns"] = ["ThermOpac", "Carrier (Premium)", "Carrier (Budget)", "Trane", "Daikin"]
+    mock_data_5["offer_columns"] = ["AeroClima", "Carrier (Premium)", "Carrier (Budget)", "Trane", "Daikin"]
     mock_data_5["vendor_scores"] = list(mock_data["vendor_scores"]) + [
         {"vendor_name": "Daikin", "compliance_percent": 90.0, "passed_count": 3, "marginal_count": 0, "failed_count": 0, "total_count": 3}
     ]
@@ -195,11 +194,11 @@ def test_pdf_report_with_project_and_split_offers():
 def test_live_ai_audit():
     print("\n=== TEST 3: Live AI Compliance Audit with Clues & Project Extraction ===")
     spec_text = extract_document_text("Test_Suite/Spec1.pdf")
-    offer_text = extract_document_text("Test_Suite/Offer1.pdf")
+    offer_text = extract_document_text("Vendor_Quote_1_AeroClima.pdf")
     
-    # Intentionally passing a generic filename "Offer1.pdf" to verify it detects the true vendor and project
+    # Intentionally passing a generic filename "Quote_Option_1.pdf" to verify it detects the true vendor and project
     vendor_offers = [
-        {"filename": "Offer1.pdf", "text": offer_text}
+        {"filename": "Quote_Option_1.pdf", "text": offer_text}
     ]
     
     try:

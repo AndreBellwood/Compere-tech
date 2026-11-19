@@ -136,7 +136,7 @@ def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict], user_pre
         vendor_id_rule = f"""2. IN-DOCUMENT VENDOR IDENTITY EXTRACTION:
    {specifier_note}
    - DO NOT rely on arbitrary uploaded file names (e.g. 'Offer1.pdf', 'quote_1.pdf', or generic titles).
-   - Use internal document clues (document letterheads, logos, email domain names, signature blocks, quotation references) to identify the real company name (e.g., 'ThermOpac', 'Carrier', 'Trane', 'Daikin', 'AirCraft', 'ClimaCore').
+   - Use internal document clues (document letterheads, logos, email domain names, signature blocks, quotation references) to identify the real company name (e.g., 'AeroClima', 'Carrier', 'Trane', 'Daikin', 'ApexAir', 'ClimaCore').
    - Distinguish the equipment vendor/manufacturer from the client or engineer."""
 
     user_prompt = f"""
@@ -147,7 +147,7 @@ Audit the Vendor Submission(s) against the Engineering Specification. Normalize 
 {pref_instructions}
 Adjudication Intelligence Requirements:
 1. ACCURATE PROJECT NAME IDENTIFICATION:
-   - Identify the overarching Project Name common across the specification and vendor quotations (e.g., "SASOL Phase 1 Expansion", "Msukligwe Ermelo", "DATA HALL 1 & UPS ROOM - CRAH UPGRADE").
+   - Identify the overarching Project Name common across the specification and vendor quotations (e.g., "Metro Center Central Plant Modernization", "DATA HALL 1 & UPS ROOM - CRAH UPGRADE").
    - Spec Project Hints: {spec_proj_hints}
    - Set "project_name" at the top level of the JSON.
 
@@ -158,7 +158,7 @@ Adjudication Intelligence Requirements:
    - IF A SINGLE VENDOR SUBMITS A PREMIUM OFFER AS WELL AS A BUDGET OFFER (or Option 1 vs Option 2, Inverter vs Fixed-speed, Base vs Alternative), SPLIT THAT VENDOR'S SUBMISSIONS INTO TWO COLUMNS!
      Example column labels:
      • "Carrier (Premium)" and "Carrier (Budget)"
-     • "ThermOpac (Option 1)" and "ThermOpac (Option 2)"
+     • "AeroClima (Option 1)" and "AeroClima (Option 2)"
    - If a vendor submits only a single standard offer, use their clean company name (e.g., "Trane", "Daikin").
    - Use these exact column names consistently across "offer_columns", "scope_table", "units", and "discrepancies".
 
@@ -448,9 +448,9 @@ Document Clues:
 
 Adjudication & Extraction Guidelines:
 1. PROJECT & ENTITY IDENTIFICATION:
-   - Identify Project Name / Facility / Site (e.g., "SASOL Phase 1 Expansion", "Mooirivier Mall Upgrades").
+   - Identify Project Name / Facility / Site (e.g., "Metro Center Central Plant Modernization", "Horizon Medical Center").
    - Identify Document Nature: "Specification" or "Vendor Quotation".
-   - Identify Entity Name: Consulting Engineering firm or Vendor / Manufacturer (e.g., "ThermOpac", "Carrier", "Trane").
+   - Identify Entity Name: Consulting Engineering firm or Vendor / Manufacturer (e.g., "AeroClima", "Carrier", "Trane").
    - Identify Document Reference / Quote Number / Revision.
 
 2. EXECUTIVE TECHNICAL SUMMARY:
