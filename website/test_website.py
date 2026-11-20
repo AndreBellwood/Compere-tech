@@ -18,7 +18,7 @@ def test_html_content():
     assert "capabilities" in content, "Capabilities section missing"
     assert "workflow" in content, "Workflow section missing"
     assert "confidentiality" in content, "Confidentiality section missing"
-    assert "beta.compere.tech" in content, "Terminal launch link to beta.compere.tech missing"
+    assert "compere-tech.streamlit.app" in content, "Terminal launch link missing"
     assert "COMPERE_Beta_Test_Pack.zip" in content, "Sample test pack download link missing"
     print(f"[PASS] HTML structure and required sections verified ({len(content)} bytes).")
 
