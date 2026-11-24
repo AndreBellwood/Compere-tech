@@ -6,13 +6,13 @@ from services.report_service import generate_pdf_report
 
 def test_clues_and_naming():
     print("=== TEST 1: Clue Extraction and Naming Hygiene ===")
-    spec_path = "Test_Suite/Spec1.pdf"
+    spec_path = "Test_Suite/Schedule_Refurbishment for TheSquare.pdf" if os.path.exists("Test_Suite/Schedule_Refurbishment for TheSquare.pdf") else "Test_Suite/Spec1.pdf"
     offer_path = "Vendor_Quote_1_AeroClima.pdf"
     
     spec_text = extract_document_text(spec_path)
     offer_text = extract_document_text(offer_path)
     
-    spec_clues = extract_document_clues(spec_text, "Spec1.pdf")
+    spec_clues = extract_document_clues(spec_text, os.path.basename(spec_path))
     offer_clues = extract_document_clues(offer_text, "Vendor_Quote_1_AeroClima.pdf")
     
     print("Spec Clues:", spec_clues["project_candidates"])
@@ -193,7 +193,11 @@ def test_pdf_report_with_project_and_split_offers():
 
 def test_live_ai_audit():
     print("\n=== TEST 3: Live AI Compliance Audit with Clues & Project Extraction ===")
-    spec_text = extract_document_text("Test_Suite/Spec1.pdf")
+    spec_path = "Test_Suite/Schedule_Refurbishment for TheSquare.pdf" if os.path.exists("Test_Suite/Schedule_Refurbishment for TheSquare.pdf") else "Test_Suite/Spec1.pdf"
+    if not os.path.exists(spec_path):
+        print(f"Skipping live AI test: {spec_path} not found")
+        return
+    spec_text = extract_document_text(spec_path)
     offer_text = extract_document_text("Vendor_Quote_1_AeroClima.pdf")
     
     # Intentionally passing a generic filename "Quote_Option_1.pdf" to verify it detects the true vendor and project

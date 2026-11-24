@@ -101,7 +101,7 @@ def test_extraction_pdf_generation():
 
 def test_extraction_ai_pipeline():
     print("\n=== TEST 2: Live AI Document Extraction ===")
-    spec_path = "Test_Suite/Spec1.pdf"
+    spec_path = "Test_Suite/Schedule_Refurbishment for TheSquare.pdf" if os.path.exists("Test_Suite/Schedule_Refurbishment for TheSquare.pdf") else "Test_Suite/Spec1.pdf"
     if not os.path.exists(spec_path):
         print(f"Skipping live AI test: {spec_path} not found")
         return
@@ -109,8 +109,8 @@ def test_extraction_ai_pipeline():
     spec_text = extract_document_text(spec_path)
     assert len(spec_text) > 100, "Spec text should be non-empty"
 
-    print("Running extract_document_parameters on Spec1.pdf...")
-    res = extract_document_parameters(spec_text, filename="Spec1.pdf", doc_type_hint="Specification")
+    print(f"Running extract_document_parameters on {os.path.basename(spec_path)}...")
+    res = extract_document_parameters(spec_text, filename=os.path.basename(spec_path), doc_type_hint="Specification")
 
     print("Identified Project Name:", res.get("project_name"))
     print("Document Nature:", res.get("document_type"))

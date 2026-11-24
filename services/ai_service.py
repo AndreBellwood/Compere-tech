@@ -9,13 +9,37 @@ from services.currency_service import get_live_rates
 
 
 def get_ai_client():
-    """Dynamically reloads config to pick up runtime updates to API keys/models."""
+    """Dynamically reloads config to pick up runtime updates to API keys/models.
+    Returns (client, model_name, provider). For Anthropic, client is an anthropic.Anthropic instance."""
     try:
         importlib.reload(config)
     except Exception:
         pass
+    if config.LLM_PROVIDER == "anthropic":
+        import anthropic
+        client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY or config.LLM_API_KEY)
+        return client, config.LLM_MODEL, "anthropic"
     client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
-    return client, config.LLM_MODEL
+    return client, config.LLM_MODEL, "gemini"
+
+
+def request_text_completion(client, model_name: str, provider: str, user_prompt: str, temperature: float = 0.1) -> str:
+    """Sends a single-turn prompt to the configured provider and returns the response text."""
+    if provider == "anthropic":
+        response = client.messages.create(
+            model=model_name,
+            max_tokens=8192,
+            temperature=temperature,
+            messages=[{"role": "user", "content": user_prompt}]
+        )
+        return "".join(block.text for block in response.content if getattr(block, "type", "") == "text")
+
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[{"role": "user", "content": user_prompt}],
+        temperature=temperature
+    )
+    return response.choices[0].message.content
 
 
 def build_user_preferences_instructions(user_preferences: dict) -> str:
@@ -83,7 +107,7 @@ def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict], user_pre
     
     vendor_offers is a list of dicts: [{"vendor_name": "...", "text": "...", "filename": "..."}]
     """
-    client, model_name = get_ai_client()
+    client, model_name, provider = get_ai_client()
     
     spec_clues = extract_document_clues(spec_text, "Specification")
     
@@ -241,35 +265,7 @@ Return your evaluation strictly as a valid JSON object matching this structure:
 """
     
     try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[{"role": "user", "content": user_prompt}],
-            temperature=0.1
-        )
-        
-        # Isolate the text directly by checking structural layout states
-        if hasattr(response, 'choices'):
-            choices_list = response.choices
-            if isinstance(choices_list, list) and len(choices_list) > 0:
-                item = choices_list[0]
-                if hasattr(item, 'message'):
-                    raw_content = item.message.content
-                elif isinstance(item, dict) and 'message' in item:
-                    msg = item['message']
-                    raw_content = msg.get('content', str(msg)) if isinstance(msg, dict) else str(msg)
-                else:
-                    raw_content = getattr(item, 'text', str(item))
-            else:
-                raw_content = response.choices.message.content
-        elif isinstance(response, list) and len(response) > 0:
-            item = response[0]
-            if hasattr(item, 'message'):
-                raw_content = item.message.content
-            else:
-                raw_content = item.get('message', {}).get('content', str(item))
-        else:
-            raw_content = str(response)
-            
+        raw_content = request_text_completion(client, model_name, provider, user_prompt)
     except Exception as e:
         raise Exception(f"API Interface Exception: {str(e)}")
 
@@ -413,7 +409,7 @@ def extract_document_parameters(doc_text: str, filename: str = "", doc_type_hint
     Extracts all relevant HVAC and engineering parameters from a single specification or vendor quotation.
     Summarises and tabulates the data without comparison, grouping parameters by physical equipment units.
     """
-    client, model_name = get_ai_client()
+    client, model_name, provider = get_ai_client()
     
     clues = extract_document_clues(doc_text, filename)
     email_str = ", ".join(clues["emails"]) if clues["emails"] else "None found"
@@ -513,34 +509,7 @@ DOCUMENT TEXT TO EXTRACT:
 {doc_text}
 """
     try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[{"role": "user", "content": user_prompt}],
-            temperature=0.1
-        )
-        
-        if hasattr(response, 'choices'):
-            choices_list = response.choices
-            if isinstance(choices_list, list) and len(choices_list) > 0:
-                item = choices_list[0]
-                if hasattr(item, 'message'):
-                    raw_content = item.message.content
-                elif isinstance(item, dict) and 'message' in item:
-                    msg = item['message']
-                    raw_content = msg.get('content', str(msg)) if isinstance(msg, dict) else str(msg)
-                else:
-                    raw_content = getattr(item, 'text', str(item))
-            else:
-                raw_content = response.choices.message.content
-        elif isinstance(response, list) and len(response) > 0:
-            item = response[0]
-            if hasattr(item, 'message'):
-                raw_content = item.message.content
-            else:
-                raw_content = item.get('message', {}).get('content', str(item))
-        else:
-            raw_content = str(response)
-            
+        raw_content = request_text_completion(client, model_name, provider, user_prompt)
     except Exception as e:
         raise Exception(f"API Interface Exception: {str(e)}")
 

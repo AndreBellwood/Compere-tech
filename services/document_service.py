@@ -74,7 +74,6 @@ def extract_image_text(file_path: str) -> str:
             img.save(buffer, format=save_fmt)
             base64_img = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
-        client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
         prompt = (
             "You are an expert optical character recognition (OCR) and technical document parsing system. "
             "Forensically extract ALL text, tables, engineering equipment schedules, model numbers, duties, "
@@ -83,26 +82,51 @@ def extract_image_text(file_path: str) -> str:
             "Do not omit any serial numbers, capacities, pressures, airflows, temperatures, power ratings, or vendor details."
         )
 
-        response = client.chat.completions.create(
-            model=config.LLM_MODEL,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{mime};base64,{base64_img}"
+        if config.LLM_PROVIDER == "anthropic":
+            import anthropic
+            client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY or config.LLM_API_KEY)
+            response = client.messages.create(
+                model=config.LLM_MODEL,
+                max_tokens=8192,
+                temperature=0.0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {"type": "base64", "media_type": mime, "data": base64_img}
+                            },
+                            {"type": "text", "text": prompt}
+                        ]
+                    }
+                ]
+            )
+            text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
+            if text.strip():
+                return text.strip()
+        else:
+            client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
+            response = client.chat.completions.create(
+                model=config.LLM_MODEL,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime};base64,{base64_img}"
+                                }
                             }
-                        }
-                    ]
-                }
-            ],
-            temperature=0.0
-        )
-        if response.choices and response.choices[0].message.content:
-            return response.choices[0].message.content.strip()
+                        ]
+                    }
+                ],
+                temperature=0.0
+            )
+            if response.choices and response.choices[0].message.content:
+                return response.choices[0].message.content.strip()
     except Exception as e:
         # Fallback via MarkItDown
         try:
