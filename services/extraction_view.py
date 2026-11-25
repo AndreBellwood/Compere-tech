@@ -131,9 +131,16 @@ def render_standalone_extraction():
             st.write("*Extracting HVAC parameters, equipment schedules, and engineering duties...*")
 
         user_prefs = st.session_state.get("user_preferences", {})
-        extract_results = extract_document_parameters(
-            extracted_text, filename=primary_filename, doc_type_hint=hint, user_preferences=user_prefs
-        )
+        try:
+            extract_results = extract_document_parameters(
+                extracted_text, filename=primary_filename, doc_type_hint=hint, user_preferences=user_prefs
+            )
+        except Exception as e:
+            status_box.empty()
+            p1.empty()
+            st.error(f"Parameter Extraction Error: {str(e)}")
+            st.info("Tip: Please verify that your LLM API key and model are properly configured in deployment secrets.")
+            st.stop()
         p1.progress(80)
 
         with status_box.container():

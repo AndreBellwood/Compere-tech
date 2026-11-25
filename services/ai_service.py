@@ -17,21 +17,50 @@ def get_ai_client():
         pass
     if config.LLM_PROVIDER == "anthropic":
         import anthropic
-        client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY or config.LLM_API_KEY)
+        # Explicit timeout so a stalled request fails with a clear error instead of hanging indefinitely.
+        client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY or config.LLM_API_KEY, timeout=300.0, max_retries=2)
         return client, config.LLM_MODEL, "anthropic"
-    client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL)
+    client = OpenAI(api_key=config.LLM_API_KEY, base_url=config.LLM_BASE_URL, timeout=180.0, max_retries=2)
     return client, config.LLM_MODEL, "gemini"
+
+
+MAX_OUTPUT_TOKENS = 32000
+
+
+def parse_llm_json(raw_content: str) -> dict:
+    """Parses a JSON object from an LLM response, tolerating markdown code fences and surrounding text."""
+    text = (raw_content or "").strip()
+    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", text, re.DOTALL)
+    if fence:
+        text = fence.group(1)
+    try:
+        data = json.loads(text)
+    except Exception:
+        json_match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not json_match:
+            raise ValueError(f"LLM response contained no JSON object (length {len(raw_content or '')}): {(raw_content or '')[:300]}")
+        try:
+            data = json.loads(json_match.group(0))
+        except Exception as e:
+            raise ValueError(f"LLM response JSON could not be parsed (length {len(raw_content or '')}): {e}") from e
+    if not isinstance(data, dict):
+        raise ValueError("LLM response JSON was not an object")
+    return data
 
 
 def request_text_completion(client, model_name: str, provider: str, user_prompt: str, temperature: float = 0.1) -> str:
     """Sends a single-turn prompt to the configured provider and returns the response text."""
     if provider == "anthropic":
-        response = client.messages.create(
+        # The installed Anthropic SDK rejects the 'temperature' keyword, so it is omitted on this path.
+        # Streaming is required by the Anthropic SDK for large max_tokens values (avoids the 10-minute non-streaming guard).
+        with client.messages.stream(
             model=model_name,
-            max_tokens=8192,
-            temperature=temperature,
+            max_tokens=MAX_OUTPUT_TOKENS,
             messages=[{"role": "user", "content": user_prompt}]
-        )
+        ) as stream:
+            response = stream.get_final_message()
+        if getattr(response, "stop_reason", None) == "max_tokens":
+            raise ValueError(f"LLM response was truncated at the {MAX_OUTPUT_TOKENS} token output limit")
         return "".join(block.text for block in response.content if getattr(block, "type", "") == "text")
 
     response = client.chat.completions.create(
@@ -97,6 +126,96 @@ def build_user_preferences_instructions(user_preferences: dict) -> str:
     if instructions:
         return "\n--- APPLIED USER PREFERENCES & LIMITS ---\n" + "\n".join(instructions) + "\n"
     return ""
+
+
+def _ask_json(client, model_name, provider, prompt: str) -> dict:
+    """Runs one small LLM call and returns its parsed JSON object."""
+    return parse_llm_json(request_text_completion(client, model_name, provider, prompt))
+
+
+def run_split_audit(client, model_name, provider, full_prompt, spec_text, clues_text, spec_proj_hints, vendor_id_rule, pref_instructions, offers_prompt_section) -> dict:
+    """
+    Runs the compliance audit as several small LLM calls instead of one large one, so each response
+    returns quickly. Produces the same output shape as the single-call audit:
+      - header call: project_name, offer_columns, executive_summary, specification_ambiguities, unit names
+      - scope call: scope_table
+      - one call per equipment unit: that unit's parameters and discrepancies
+    """
+    shared_context = f"""
+You are an independent Principal HVAC Consulting Engineer conducting a professional technical compliance audit.
+Objective: Audit the Vendor Submission(s) against the Engineering Specification. Normalize engineering units naturally (e.g., l/s to m³/s, kW, Pa, °C DB/WB).
+{pref_instructions}
+{vendor_id_rule}
+Use these exact column names consistently. Keep status values to: Compliant, Marginal, or Non-Compliant.
+
+--- EXTRACTED METADATA CLUES ---
+{clues_text}
+
+--- SPECIFICATION TEXT ---
+{spec_text}
+
+{offers_prompt_section}
+"""
+
+    header = _ask_json(client, model_name, provider, shared_context + f"""
+TASK: Return ONLY this JSON object (no other text):
+{{
+  "project_name": "Accurately Identified Project Name (spec hints: {spec_proj_hints})",
+  "offer_columns": ["Column 1", "Column 2"],
+  "executive_summary": "**Tender Overview:** ... **Compliance & Variances:** ... **Adjudication Recommendation:** ... (under 140 words total)",
+  "specification_ambiguities": [
+    {{"item": "...", "ambiguity": "...", "impact": "...", "verification_action": "..."}}
+  ],
+  "unit_names": ["Unit 1: [Equipment Tag and Duty]", "Unit 2: ..."]
+}}
+""")
+
+    scope = _ask_json(client, model_name, provider, shared_context + """
+TASK: Return ONLY this JSON object (no other text) with the scope-of-supply / demarcation comparison:
+{
+  "scope_table": [
+    {
+      "Parameter": "Scope of Supply",
+      "Spec_Requirement": "Detailed requirement from spec",
+      "vendors": {
+        "Column_Name": {"value": "Brief offered scope", "status": "Compliant / Marginal / Non-Compliant"}
+      }
+    }
+  ]
+}
+""")
+
+    units = []
+    for unit_name in header.get("unit_names", []) or []:
+        unit = _ask_json(client, model_name, provider, shared_context + f"""
+TASK: Audit ONLY the equipment unit named "{unit_name}". Return ONLY this JSON object (no other text):
+{{
+  "unit_name": "{unit_name}",
+  "parameters": [
+    {{
+      "Parameter": "Supply Airflow",
+      "Spec_Requirement": "3.30 m³/s",
+      "vendors": {{
+        "Column_Name": {{"value": "3.33 m³/s", "status": "Compliant"}}
+      }}
+    }}
+  ],
+  "discrepancies": {{
+    "Column_Name": ["Factual technical note regarding variances, options, or unaddressed items."]
+  }}
+}}
+""")
+        units.append(unit)
+
+    data = {
+        "project_name": header.get("project_name", ""),
+        "offer_columns": header.get("offer_columns", []),
+        "executive_summary": header.get("executive_summary", ""),
+        "specification_ambiguities": header.get("specification_ambiguities", []),
+        "scope_table": scope.get("scope_table", []),
+        "units": units,
+    }
+    return data
 
 
 def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict], user_preferences: dict = None, specifier_company: str = "") -> dict:
@@ -266,16 +385,10 @@ Return your evaluation strictly as a valid JSON object matching this structure:
     
     try:
         raw_content = request_text_completion(client, model_name, provider, user_prompt)
+        data = parse_llm_json(raw_content)
     except Exception as e:
         raise Exception(f"API Interface Exception: {str(e)}")
 
-    try:
-        data = json.loads(raw_content)
-    except Exception:
-        # Isolate the core JSON matrix strings using a strict regex boundary locator
-        json_match = re.search(r"\{.*\}", raw_content, re.DOTALL)
-        if json_match:
-            data = json.loads(json_match.group(0))
     # Validate / Fallback for project_name
     proj = data.get("project_name")
     if not proj or str(proj).strip().lower() in ["unknown", "accurately identified project name", "project", "none"]:
@@ -513,14 +626,7 @@ DOCUMENT TEXT TO EXTRACT:
     except Exception as e:
         raise Exception(f"API Interface Exception: {str(e)}")
 
-    try:
-        data = json.loads(raw_content)
-    except Exception:
-        json_match = re.search(r"\{.*\}", raw_content, re.DOTALL)
-        if json_match:
-            data = json.loads(json_match.group(0))
-        else:
-            raise ValueError(f"Failed to parse LLM extraction response: {raw_content[:500]}")
+    data = parse_llm_json(raw_content)
 
     # Fallback / sanitize project name
     proj = data.get("project_name")

@@ -620,11 +620,18 @@ if btn_execute:
         st.write("*Running multi-vendor cross-examination & unit normalization matrix...*")
     
     user_prefs = st.session_state.get("user_preferences", {})
-    results = compare_spec_with_offers(
-        spec_text, vendor_offers,
-        user_preferences=user_prefs,
-        specifier_company=st.session_state.get("specifier_company", "")
-    )
+    try:
+        results = compare_spec_with_offers(
+            spec_text, vendor_offers,
+            user_preferences=user_prefs,
+            specifier_company=st.session_state.get("specifier_company", "")
+        )
+    except Exception as e:
+        status_box.empty()
+        p1.empty()
+        st.error(f"Compliance Audit Error: {str(e)}")
+        st.info("Tip: Please verify that your LLM API key and model are properly configured in deployment secrets.")
+        st.stop()
     p1.progress(85)
 
     # 4. Generate Corporate PDF Ledger

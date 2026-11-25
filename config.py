@@ -24,13 +24,24 @@ LLM_API_KEY = get_config_val("LLM_API_KEY", "")
 # 3. Gemini OpenAI-compatible base URL
 LLM_BASE_URL = get_config_val("LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
 
-# 4. Model name (default: gemini-2.5-flash; e.g. claude-haiku-5-5 when LLM_PROVIDER=anthropic)
-LLM_MODEL = get_config_val("LLM_MODEL", "gemini-2.5-flash")
-
-# 5. Anthropic API key (used only when LLM_PROVIDER=anthropic)
+# 4. Anthropic API key (used only when LLM_PROVIDER=anthropic)
 ANTHROPIC_API_KEY = get_config_val("ANTHROPIC_API_KEY", "")
 
-# 4. Optional Beta Passkey protection (leave empty to disable gate)
+# 5. Provider-specific model defaults
+GEMINI_MODEL = get_config_val("GEMINI_MODEL", "gemini-3.8-flash")
+ANTHROPIC_MODEL = get_config_val("ANTHROPIC_MODEL", "claude-haiku-5-5")
+
+# 6. Active Model name (resolved dynamically based on LLM_PROVIDER)
+raw_model = get_config_val("LLM_MODEL", "").strip()
+if LLM_PROVIDER == "anthropic":
+    LLM_MODEL = raw_model if raw_model and "gemini" not in raw_model.lower() else ANTHROPIC_MODEL
+else:
+    LLM_MODEL = raw_model if raw_model and "claude" not in raw_model.lower() else GEMINI_MODEL
+    # Automatically upgrade retired gemini-2.5 models if present in legacy deployment secrets
+    if "2.5" in LLM_MODEL:
+        LLM_MODEL = "gemini-3.8-flash"
+
+# 7. Optional Beta Passkey protection (leave empty to disable gate)
 BETA_ACCESS_CODE = get_config_val("BETA_ACCESS_CODE", "")
 
 

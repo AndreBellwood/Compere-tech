@@ -99,10 +99,28 @@ def test_extraction_pdf_generation():
     print("[PASS] PDF Report generation verified: font sizes >= 10 pt, OADate serial valid, layout correct.")
 
 
+TEST_SUITE_DIR = "Test_Suite"
+PREFERRED_SPEC = "Schedule_Refurbishment for TheSquare.pdf"
+
+
+def find_spec_path():
+    """Prefer the preferred spec; otherwise use the first PDF in Test_Suite that is not a vendor quote."""
+    preferred = os.path.join(TEST_SUITE_DIR, PREFERRED_SPEC)
+    if os.path.exists(preferred):
+        return preferred
+    if not os.path.isdir(TEST_SUITE_DIR):
+        return None
+    for name in sorted(os.listdir(TEST_SUITE_DIR)):
+        lower = name.lower()
+        if lower.endswith(".pdf") and not any(k in lower for k in ("quote", "offer")):
+            return os.path.join(TEST_SUITE_DIR, name)
+    return None
+
+
 def test_extraction_ai_pipeline():
     print("\n=== TEST 2: Live AI Document Extraction ===")
-    spec_path = "Test_Suite/Schedule_Refurbishment for TheSquare.pdf" if os.path.exists("Test_Suite/Schedule_Refurbishment for TheSquare.pdf") else "Test_Suite/Spec1.pdf"
-    if not os.path.exists(spec_path):
+    spec_path = find_spec_path()
+    if not spec_path:
         print(f"Skipping live AI test: {spec_path} not found")
         return
 

@@ -85,10 +85,9 @@ def extract_image_text(file_path: str) -> str:
         if config.LLM_PROVIDER == "anthropic":
             import anthropic
             client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY or config.LLM_API_KEY)
-            response = client.messages.create(
+            with client.messages.stream(
                 model=config.LLM_MODEL,
-                max_tokens=8192,
-                temperature=0.0,
+                max_tokens=32000,
                 messages=[
                     {
                         "role": "user",
@@ -101,7 +100,8 @@ def extract_image_text(file_path: str) -> str:
                         ]
                     }
                 ]
-            )
+            ) as stream:
+                response = stream.get_final_message()
             text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
             if text.strip():
                 return text.strip()
