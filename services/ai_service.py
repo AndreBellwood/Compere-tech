@@ -284,10 +284,10 @@ def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict], user_pre
     else:
         vendor_id_rule = f"""2. IN-DOCUMENT VENDOR IDENTITY EXTRACTION & NAMING HYGIENE:
    {specifier_note}
-   - Each vendor offer MUST be identified strictly by its clean vendor/manufacturer company name (e.g., 'Alpha', 'Farrier', 'Rain', 'Shunter', 'Carrier', 'Trane', 'Daikin').
+   - Each vendor offer MUST be identified strictly by its clean vendor/manufacturer company name (e.g. OEM brand or contractor entity).
    - NEVER use uploaded file names, quotation document references, or project titles as vendor names.
-   - For Submission 'Quote_SHUNTER_THE_SQUARE.pdf': The vendor company is 'Shunter' (or 'Shunter Climate'), NOT 'Square' ('The Square' is the project name!).
-   - In 'executive_summary' narrative, refer to vendors STRICTLY by their clean company names (e.g. 'Alpha', 'Farrier', 'Rain', 'Shunter'). NEVER use uploaded file names or project names when referring to vendors."""
+   - Distinguish the equipment vendor/manufacturer from the client, specifier engineer, or project name (e.g. in 'Quote_[Vendor]_[Project].pdf', the vendor is '[Vendor]', NOT '[Project]').
+   - In 'executive_summary' narrative, refer to vendors STRICTLY by their clean company names. NEVER use uploaded file names or project names when referring to vendors."""
 
     user_prompt = f"""
 You are an independent Principal HVAC Consulting Engineer conducting a professional technical compliance audit.
@@ -297,13 +297,12 @@ Audit the Vendor Submission(s) against the Engineering Specification. Normalize 
 {pref_instructions}
 Adjudication Intelligence Requirements:
 1. ACCURATE PROJECT NAME IDENTIFICATION & STRICT SEPARATION:
-   - Identify the overarching Project Name common across the specification and vendor quotations (e.g., "Refurbishment of The Square", "Metro Center Central Plant Modernization").
+   - Identify the overarching Project Name common across the specification and vendor quotations.
    - Spec Project Hints: {spec_proj_hints}
    - Set "project_name" at the top level of the JSON.
    - MANDATE - STRICT PROJECT SEPARATION:
      The Project Name is common to all submissions and belongs EXCLUSIVELY in 'project_name' and section headings.
      NEVER prepend, append, or include the Project Name in any vendor name, column label, or narrative reference!
-     (For example: NEVER write 'The Square Farrier', 'ALPHA Quote. The Square', 'TheSquare RAIN', or 'SQUARE').
 
 {vendor_id_rule}
 
@@ -311,9 +310,9 @@ Adjudication Intelligence Requirements:
    - Each vendor offer MUST have its own column in the audit matrix.
    - IF A SINGLE VENDOR SUBMITS A PREMIUM OFFER AS WELL AS A BUDGET OFFER (or Option 1 vs Option 2, Inverter vs Fixed-speed, Base vs Alternative), SPLIT THAT VENDOR'S SUBMISSIONS INTO TWO COLUMNS!
      Example column labels:
-     • "Carrier (Premium)" and "Carrier (Budget)"
-     • "AeroClima (Option 1)" and "AeroClima (Option 2)"
-   - If a vendor submits only a single standard offer, use their clean company name (e.g., "Alpha", "Farrier", "Rain", "Shunter", "Trane", "Daikin").
+     • "[Vendor] (Premium)" and "[Vendor] (Budget)"
+     • "[Vendor] (Option 1)" and "[Vendor] (Option 2)"
+   - If a vendor submits only a single standard offer, use their clean company name (e.g. "[Vendor]").
    - Use these exact clean column names consistently across "offer_columns", "scope_table", "units", and "discrepancies".
 
 4. EXECUTIVE SUMMARY READABILITY & VENDOR NAMING:
@@ -323,8 +322,8 @@ Adjudication Intelligence Requirements:
      - **Adjudication Recommendation:** Concise conclusion and recommendation.
    - Keep total executive summary under 140 words.
    - MANDATORY VENDOR REFERENCE RULE:
-     In the narrative, refer to vendors STRICTLY by their clean company names (e.g. 'Alpha', 'Farrier', 'Rain', 'Shunter').
-     NEVER use uploaded file names or project names when referring to vendors (e.g. NEVER write 'ALPHA Quote. The Square', 'The Square. Farrier 241126', 'TheSquare_RAIN Quote', or 'SQUARE').
+     In the narrative, refer to vendors STRICTLY by their clean company names.
+     NEVER use uploaded file names or project names when referring to vendors.
 
 5. CONCISE NUMERICAL REQUIREMENTS:
    - In parameter grids, limit 'Spec_Requirement' strictly to a concise number and unit of measurement (e.g., '5300 l/s', '1000 Pa', '56.4 kW', '22.0 °C DB').
@@ -448,9 +447,12 @@ Return your evaluation strictly as a valid JSON object matching this structure:
             if fn:
                 vendor_alias_map[fn] = target_name
                 vendor_alias_map[os.path.splitext(fn)[0]] = target_name
-            for brand in ["shunter", "alpha", "farrier", "rain", "carrier", "trane", "daikin", "aeroclima", "apexair", "york", "mitsubishi"]:
-                if brand in fn.lower():
-                    vendor_alias_map[brand] = target_name
+                # Dynamically map non-noise, non-project words from filename to target_name
+                p_toks = {w.lower() for w in re.split(r'[\s_\-,.]+', proj_name) if len(w) >= 3} if proj_name else set()
+                fn_tokens = [w for w in re.split(r'[-_.]+', os.path.splitext(fn)[0]) if len(w) >= 3 and w.lower() not in {"quote", "quotation", "tender", "offer", "pdf"}]
+                for ft in fn_tokens:
+                    if ft.lower() not in p_toks:
+                        vendor_alias_map[ft] = target_name
 
     def normalize_col(c: str) -> str:
         clean_c = clean_company_name(c, proj_name)
@@ -460,13 +462,11 @@ Return your evaluation strictly as a valid JSON object matching this structure:
                     tier = clean_c[clean_c.find("("):clean_c.rfind(")")+1]
                     return f"{new_k} {tier}".strip()
                 return new_k
-        if clean_c.lower() in proj_name.lower() or clean_c.lower() in {"square", "the square", "thesquare"}:
+        if not clean_c or (proj_name and clean_c.lower() in proj_name.lower()):
+            assigned = [col.lower() for col in data.get("offer_columns", []) if col.lower() not in proj_name.lower()]
             for cand in known_vendors_list:
-                if cand.lower() not in [col.lower() for col in data.get("offer_columns", [])]:
+                if cand.lower() not in assigned:
                     return cand
-            for k, v in vendor_alias_map.items():
-                if "shunter" in v.lower():
-                    return "Shunter"
         return clean_c
 
     # Remap offer_columns
@@ -504,18 +504,19 @@ Return your evaluation strictly as a valid JSON object matching this structure:
             if "discrepancies" in u and isinstance(u["discrepancies"], dict):
                 u["discrepancies"] = {normalize_col(k): val for k, val in u["discrepancies"].items()}
 
-    # Sanitize Executive Summary Narrative (Item 2: Use vendor names, not filenames or project names)
+    # Sanitize Executive Summary Narrative (Dynamic substitution: clean vendor names instead of filenames)
     exec_summary = data.get("executive_summary", "")
     if exec_summary and isinstance(exec_summary, str):
-        for old_fn, clean_vn in vendor_alias_map.items():
-            if len(old_fn) >= 4 and old_fn.lower() != clean_vn.lower():
+        for old_fn, clean_vn in sorted(vendor_alias_map.items(), key=lambda item: len(item[0]), reverse=True):
+            if len(old_fn) >= 4 and old_fn.lower() != clean_vn.lower() and (not proj_name or old_fn.lower() not in proj_name.lower()):
                 exec_summary = re.sub(re.escape(old_fn), clean_vn, exec_summary, flags=re.IGNORECASE)
                 exec_summary = re.sub(re.escape(os.path.splitext(old_fn)[0]), clean_vn, exec_summary, flags=re.IGNORECASE)
-        exec_summary = re.sub(r'The\s*Square[._\s]+Farrier(?:\s*\d{6})?', 'Farrier', exec_summary, flags=re.IGNORECASE)
-        exec_summary = re.sub(r'ALPHA\s*Quote[._\s]+(?:The\s*Square)?', 'Alpha', exec_summary, flags=re.IGNORECASE)
-        exec_summary = re.sub(r'TheSquare[._\s]+RAIN(?:\s*Quote)?', 'Rain', exec_summary, flags=re.IGNORECASE)
-        exec_summary = re.sub(r'\bSQUARE\s+(omits|deviates|prices|offers|submits|fails|excludes|proposes|is)\b', r'Shunter \1', exec_summary)
-        exec_summary = re.sub(r'(?:and|,)\s+SQUARE\b', ', Shunter', exec_summary)
+        # If project name words were mistakenly used as a vendor subject in the narrative, replace with unassigned vendor
+        if proj_name:
+            for pt in [w for w in re.split(r'[\s_\-,.]+', proj_name) if len(w) >= 4 and w.lower() not in {"refurbishment", "project", "specification"}]:
+                unassigned = [kv for kv in known_vendors_list if kv.lower() not in exec_summary.lower()]
+                if unassigned:
+                    exec_summary = re.sub(r'\b' + re.escape(pt) + r'\b\s+(omits|deviates|prices|offers|submits|fails|excludes|proposes|is)\b', rf'{unassigned[0]} \1', exec_summary, flags=re.IGNORECASE)
         data["executive_summary"] = exec_summary
 
     # Calculate automated percentage compliance scores for each identified offer column

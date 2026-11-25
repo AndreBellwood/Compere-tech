@@ -65,6 +65,13 @@ def test_clues_and_naming():
     clean_farrier = clean_company_name("The Square. Farrier 241126.pdf", proj)
     clean_rain = clean_company_name("TheSquare_RAIN Quote.pdf", proj)
 
+    # Test universal dynamic extraction with arbitrary global projects and OEMs
+    arb_proj = "Data Center Phase 2 CRAH Modernization"
+    clean_munters = clean_company_name("Quote_MUNTERS_DATA_CENTER_PHASE2.pdf", arb_proj)
+    clean_flakt = clean_company_name("FlaktGroup_Proposal_DataCenter.pdf", arb_proj)
+    clean_jci = clean_company_name("Johnson_Controls_Offer_(Budget).pdf", arb_proj)
+    clean_daikin = clean_company_name("Daikin_Applied_Modernization_20261125.pdf", arb_proj)
+
     print(f"clean_prem: '{clean_prem}'")
     print(f"clean_budg: '{clean_budg}'")
     print(f"clean_inc: '{clean_inc}'")
@@ -72,6 +79,10 @@ def test_clues_and_naming():
     print(f"clean_alpha: '{clean_alpha}'")
     print(f"clean_farrier: '{clean_farrier}'")
     print(f"clean_rain: '{clean_rain}'")
+    print(f"clean_munters: '{clean_munters}'")
+    print(f"clean_flakt: '{clean_flakt}'")
+    print(f"clean_jci: '{clean_jci}'")
+    print(f"clean_daikin: '{clean_daikin}'")
 
     assert clean_prem == "Carrier (Premium)"
     assert clean_budg == "Carrier (Budget)"
@@ -80,6 +91,10 @@ def test_clues_and_naming():
     assert clean_alpha == "Alpha", f"Expected Alpha, got {clean_alpha}"
     assert clean_farrier == "Farrier", f"Expected Farrier, got {clean_farrier}"
     assert clean_rain.upper() == "RAIN", f"Expected Rain, got {clean_rain}"
+    assert clean_munters == "Munters", f"Expected Munters, got {clean_munters}"
+    assert clean_flakt == "FlaktGroup", f"Expected FlaktGroup, got {clean_flakt}"
+    assert clean_jci == "Johnson Controls (Budget)", f"Expected Johnson Controls (Budget), got {clean_jci}"
+    assert clean_daikin == "Daikin Applied", f"Expected Daikin Applied, got {clean_daikin}"
 
 def test_pdf_report_with_project_and_split_offers():
     print("\n=== TEST 2: PDF Report with Project Name & Split Offers ===")
