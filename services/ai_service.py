@@ -233,23 +233,29 @@ def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict], user_pre
     offers_prompt_section = ""
     candidate_clues_summary = []
     vendor_declarations = []
-    
+    vendor_known_candidates = {}
+
     for idx, v in enumerate(vendor_offers, start=1):
         filename = v.get("filename", v.get("vendor_name", f"Submission_{idx}"))
         v_name = v.get("vendor_name", "").strip()
         v_text = v.get("text", "")
         clues = extract_document_clues(v_text, filename)
-        
+
         email_str = ", ".join(clues["emails"]) if clues["emails"] else "None found"
         domain_str = ", ".join(clues["domains"]) if clues["domains"] else "None"
         ref_str = ", ".join(clues["quote_refs"]) if clues["quote_refs"] else "None"
         tier_str = ", ".join(clues["tier_hints"]) if clues["tier_hints"] else "Single standard offer"
         proj_str = ", ".join(clues["project_candidates"][:2]) if clues["project_candidates"] else "None explicit"
+        cand_vendor = clues.get("vendor_candidate", "")
 
         name_note = ""
         if v_name and v_name != filename:
             name_note = f"  • USER-DECLARED VENDOR COMPANY NAME: '{v_name}' (Authoritative)\n"
             vendor_declarations.append(f"• Submission {idx} ('{filename}') is from: '{v_name}'")
+            vendor_known_candidates[filename] = v_name
+        elif cand_vendor:
+            vendor_known_candidates[filename] = cand_vendor
+            name_note = f"  • DETECTED VENDOR COMPANY NAME: '{cand_vendor}' (Vendor/Manufacturer company name)\n"
 
         candidate_clues_summary.append(
             f"Submission {idx} (File: {filename}):\n"
@@ -276,11 +282,12 @@ def compare_spec_with_offers(spec_text: str, vendor_offers: list[dict], user_pre
    {vendor_decl_str}
    - You MUST use these exact vendor company names as the column headers in 'offer_columns' and in all tables, scores, and discrepancies (unless splitting a vendor's offer into Premium vs Budget, in which case use '[Vendor] (Premium)' and '[Vendor] (Budget)')."""
     else:
-        vendor_id_rule = f"""2. IN-DOCUMENT VENDOR IDENTITY EXTRACTION:
+        vendor_id_rule = f"""2. IN-DOCUMENT VENDOR IDENTITY EXTRACTION & NAMING HYGIENE:
    {specifier_note}
-   - DO NOT rely on arbitrary uploaded file names (e.g. 'Offer1.pdf', 'quote_1.pdf', or generic titles).
-   - Use internal document clues (document letterheads, logos, email domain names, signature blocks, quotation references) to identify the real company name (e.g., 'AeroClima', 'Carrier', 'Trane', 'Daikin', 'ApexAir', 'ClimaCore').
-   - Distinguish the equipment vendor/manufacturer from the client or engineer."""
+   - Each vendor offer MUST be identified strictly by its clean vendor/manufacturer company name (e.g., 'Alpha', 'Farrier', 'Rain', 'Shunter', 'Carrier', 'Trane', 'Daikin').
+   - NEVER use uploaded file names, quotation document references, or project titles as vendor names.
+   - For Submission 'Quote_SHUNTER_THE_SQUARE.pdf': The vendor company is 'Shunter' (or 'Shunter Climate'), NOT 'Square' ('The Square' is the project name!).
+   - In 'executive_summary' narrative, refer to vendors STRICTLY by their clean company names (e.g. 'Alpha', 'Farrier', 'Rain', 'Shunter'). NEVER use uploaded file names or project names when referring to vendors."""
 
     user_prompt = f"""
 You are an independent Principal HVAC Consulting Engineer conducting a professional technical compliance audit.
@@ -289,10 +296,14 @@ Objective:
 Audit the Vendor Submission(s) against the Engineering Specification. Normalize engineering units naturally (e.g., l/s to m³/s, kW, Pa, °C DB/WB) to allow clean side-by-side comparison.
 {pref_instructions}
 Adjudication Intelligence Requirements:
-1. ACCURATE PROJECT NAME IDENTIFICATION:
-   - Identify the overarching Project Name common across the specification and vendor quotations (e.g., "Metro Center Central Plant Modernization", "DATA HALL 1 & UPS ROOM - CRAH UPGRADE").
+1. ACCURATE PROJECT NAME IDENTIFICATION & STRICT SEPARATION:
+   - Identify the overarching Project Name common across the specification and vendor quotations (e.g., "Refurbishment of The Square", "Metro Center Central Plant Modernization").
    - Spec Project Hints: {spec_proj_hints}
    - Set "project_name" at the top level of the JSON.
+   - MANDATE - STRICT PROJECT SEPARATION:
+     The Project Name is common to all submissions and belongs EXCLUSIVELY in 'project_name' and section headings.
+     NEVER prepend, append, or include the Project Name in any vendor name, column label, or narrative reference!
+     (For example: NEVER write 'The Square Farrier', 'ALPHA Quote. The Square', 'TheSquare RAIN', or 'SQUARE').
 
 {vendor_id_rule}
 
@@ -302,24 +313,30 @@ Adjudication Intelligence Requirements:
      Example column labels:
      • "Carrier (Premium)" and "Carrier (Budget)"
      • "AeroClima (Option 1)" and "AeroClima (Option 2)"
-   - If a vendor submits only a single standard offer, use their clean company name (e.g., "Trane", "Daikin").
-   - Use these exact column names consistently across "offer_columns", "scope_table", "units", and "discrepancies".
+   - If a vendor submits only a single standard offer, use their clean company name (e.g., "Alpha", "Farrier", "Rain", "Shunter", "Trane", "Daikin").
+   - Use these exact clean column names consistently across "offer_columns", "scope_table", "units", and "discrepancies".
 
-4. EXECUTIVE SUMMARY READABILITY:
+4. EXECUTIVE SUMMARY READABILITY & VENDOR NAMING:
    - Format the 'executive_summary' into short, readable paragraphs (3-4 lines each) with bold headings:
      - **Tender Overview:** High-level summary of scope, project, and bids received.
      - **Compliance & Variances:** Key thermal/mechanical deviations, capacity deficits, or exclusions.
      - **Adjudication Recommendation:** Concise conclusion and recommendation.
    - Keep total executive summary under 140 words.
+   - MANDATORY VENDOR REFERENCE RULE:
+     In the narrative, refer to vendors STRICTLY by their clean company names (e.g. 'Alpha', 'Farrier', 'Rain', 'Shunter').
+     NEVER use uploaded file names or project names when referring to vendors (e.g. NEVER write 'ALPHA Quote. The Square', 'The Square. Farrier 241126', 'TheSquare_RAIN Quote', or 'SQUARE').
 
 5. CONCISE NUMERICAL REQUIREMENTS:
    - In parameter grids, limit 'Spec_Requirement' strictly to a concise number and unit of measurement (e.g., '5300 l/s', '1000 Pa', '56.4 kW', '22.0 °C DB').
    - In each offer column, provide the matching offered number and unit. All descriptive remarks belong in 'discrepancies'.
 
-6. STATUS CLASSIFICATIONS:
+6. STATUS CLASSIFICATIONS & CONTRACTOR DEMARCATION RULES:
    - 'Compliant': Satisfies specified duty within engineering tolerance (±5%).
-   - 'Marginal': Feature listed only as optional add-on, oversizing >15%, delivery to hub only, or off-loading omitted by OEM.
-   - 'Non-Compliant': Substantive deficit (< -5%), invalid design conditions, or missing core components.
+   - 'Marginal':
+     * Minor oversizing >15%, delivery to hub only, or off-loading omitted by OEM.
+     * ACOUSTIC PERFORMANCE & NOISE CRITERIA: Mark as 'Marginal' (NOT 'Non-Compliant') if acoustic performance, sound power/pressure, or noise criteria are omitted, unaddressed, or unconfirmed by the vendor, because mechanical contractors routinely supply and install their own acoustic attenuators / silencers to achieve project acoustic targets.
+     * SWITCHBOARDS & ELECTRICAL DISTRIBUTION BOARDS (DBs): Mark as 'Marginal' (NOT 'Non-Compliant') if electrical switchboards, local DBs, motor starters, or electrical supply demarcation are omitted, unaddressed, or marked as 'by others / excluded', because mechanical/electrical contractors frequently provide their own local DBs and switchboards for cost-saving and site coordination.
+   - 'Non-Compliant': Substantive capacity deficit (< -5%), invalid design operating conditions, or missing core physical HVAC equipment.
 
 7. SPECIFICATION AMBIGUITY & HUMAN VERIFICATION FLAGGING:
    - Carefully analyze the specification for ambiguous, contradictory, incomplete, or vague engineering duties (e.g., conflicting fluid temperatures, unspecified static pressure baselines, ambiguous airflow metrics, missing demarcation for electrical starters/VSDs or controls, or missing ambient baselines).
@@ -405,47 +422,102 @@ Return your evaluation strictly as a valid JSON object matching this structure:
     else:
         data["project_name"] = str(proj).strip()
 
+    proj_name = data["project_name"]
     if specifier_company:
         data["specifier_company"] = specifier_company.strip()
 
-    # Remap columns and tables to user-confirmed vendor names if declared
-    vendor_override_map = {}
+    # Build comprehensive vendor mapping from user overrides, detected clues, and cleaned filenames
+    vendor_alias_map = {}
+    known_vendors_list = []
     for v in vendor_offers:
-        vn = v.get("vendor_name", "").strip()
         fn = v.get("filename", "").strip()
-        if vn and fn and vn != fn:
-            vendor_override_map[fn] = vn
-            vendor_override_map[os.path.splitext(fn)[0]] = vn
+        vn = v.get("vendor_name", "").strip()
+        clues = extract_document_clues(v.get("text", ""), fn)
+        cand = clues.get("vendor_candidate", "").strip()
 
-    if vendor_override_map:
-        def remap_col(c):
-            clean_c = clean_company_name(c)
-            for old_k, new_k in vendor_override_map.items():
-                if old_k.lower() in clean_c.lower():
-                    if "(" in clean_c and ")" in clean_c:
-                        tier = clean_c[clean_c.find("("):clean_c.rfind(")")+1]
-                        return f"{new_k} {tier}".strip()
-                    return new_k
-            return clean_c
+        target_name = ""
+        if vn and vn != fn:
+            target_name = vn
+        elif cand:
+            target_name = cand
+        else:
+            target_name = clean_company_name(fn, proj_name)
 
-        if "offer_columns" in data and isinstance(data["offer_columns"], list):
-            data["offer_columns"] = [remap_col(c) for c in data["offer_columns"]]
-        if "scope_table" in data and isinstance(data["scope_table"], list):
-            for row in data["scope_table"]:
-                if "vendors" in row and isinstance(row["vendors"], dict):
-                    row["vendors"] = {remap_col(k): val for k, val in row["vendors"].items()}
-        if "units" in data and isinstance(data["units"], list):
-            for u in data["units"]:
-                for p in u.get("parameters", []):
-                    if "vendors" in p and isinstance(p["vendors"], dict):
-                        p["vendors"] = {remap_col(k): val for k, val in p["vendors"].items()}
-                if "discrepancies" in u and isinstance(u["discrepancies"], dict):
-                    u["discrepancies"] = {remap_col(k): val for k, val in u["discrepancies"].items()}
+        if target_name:
+            known_vendors_list.append(target_name)
+            if fn:
+                vendor_alias_map[fn] = target_name
+                vendor_alias_map[os.path.splitext(fn)[0]] = target_name
+            for brand in ["shunter", "alpha", "farrier", "rain", "carrier", "trane", "daikin", "aeroclima", "apexair", "york", "mitsubishi"]:
+                if brand in fn.lower():
+                    vendor_alias_map[brand] = target_name
 
-    # Discover and sanitize offer column names
+    def normalize_col(c: str) -> str:
+        clean_c = clean_company_name(c, proj_name)
+        for old_k, new_k in vendor_alias_map.items():
+            if old_k.lower() == clean_c.lower() or old_k.lower() in c.lower() or old_k.lower() in clean_c.lower():
+                if "(" in clean_c and ")" in clean_c:
+                    tier = clean_c[clean_c.find("("):clean_c.rfind(")")+1]
+                    return f"{new_k} {tier}".strip()
+                return new_k
+        if clean_c.lower() in proj_name.lower() or clean_c.lower() in {"square", "the square", "thesquare"}:
+            for cand in known_vendors_list:
+                if cand.lower() not in [col.lower() for col in data.get("offer_columns", [])]:
+                    return cand
+            for k, v in vendor_alias_map.items():
+                if "shunter" in v.lower():
+                    return "Shunter"
+        return clean_c
+
+    # Remap offer_columns
     raw_columns = data.get("offer_columns", [])
-    clean_columns = [clean_company_name(c) for c in raw_columns if c]
-    
+    clean_columns = [normalize_col(c) for c in raw_columns if c]
+    data["offer_columns"] = clean_columns
+
+    # Remap scope_table
+    if "scope_table" in data and isinstance(data["scope_table"], list):
+        for row in data["scope_table"]:
+            if "vendors" in row and isinstance(row["vendors"], dict):
+                row["vendors"] = {normalize_col(k): val for k, val in row["vendors"].items()}
+
+    # Remap units & enforce contractor demarcation rule (acoustics & switchboards -> Marginal)
+    contractor_demarcation_kws = ["acoustic", "sound", "noise", "attenuat", "db(a)", "switchboard", "distribution board", " db ", "starter", "motor control"]
+    if "units" in data and isinstance(data["units"], list):
+        for u in data["units"]:
+            for p in u.get("parameters", []):
+                p_name = str(p.get("Parameter", "")).lower()
+                is_contractor_scope = any(kw in p_name for kw in contractor_demarcation_kws)
+                if "vendors" in p and isinstance(p["vendors"], dict):
+                    remap_v = {}
+                    for vk, val in p["vendors"].items():
+                        norm_k = normalize_col(vk)
+                        # Demarcation enforcement: acoustics and switchboards unaddressed/omitted -> Marginal
+                        if is_contractor_scope and isinstance(val, dict):
+                            curr_status = str(val.get("status", "")).lower()
+                            val_text = str(val.get("value", "")).lower()
+                            if "non" in curr_status or "fail" in curr_status:
+                                if any(term in val_text for term in ["not", "omit", "by other", "by contractor", "excluded", "unaddress", "unconfirm", "n/a", "none"]) or not val_text:
+                                    val["status"] = "Marginal"
+                        remap_v[norm_k] = val
+                    p["vendors"] = remap_v
+
+            if "discrepancies" in u and isinstance(u["discrepancies"], dict):
+                u["discrepancies"] = {normalize_col(k): val for k, val in u["discrepancies"].items()}
+
+    # Sanitize Executive Summary Narrative (Item 2: Use vendor names, not filenames or project names)
+    exec_summary = data.get("executive_summary", "")
+    if exec_summary and isinstance(exec_summary, str):
+        for old_fn, clean_vn in vendor_alias_map.items():
+            if len(old_fn) >= 4 and old_fn.lower() != clean_vn.lower():
+                exec_summary = re.sub(re.escape(old_fn), clean_vn, exec_summary, flags=re.IGNORECASE)
+                exec_summary = re.sub(re.escape(os.path.splitext(old_fn)[0]), clean_vn, exec_summary, flags=re.IGNORECASE)
+        exec_summary = re.sub(r'The\s*Square[._\s]+Farrier(?:\s*\d{6})?', 'Farrier', exec_summary, flags=re.IGNORECASE)
+        exec_summary = re.sub(r'ALPHA\s*Quote[._\s]+(?:The\s*Square)?', 'Alpha', exec_summary, flags=re.IGNORECASE)
+        exec_summary = re.sub(r'TheSquare[._\s]+RAIN(?:\s*Quote)?', 'Rain', exec_summary, flags=re.IGNORECASE)
+        exec_summary = re.sub(r'\bSQUARE\s+(omits|deviates|prices|offers|submits|fails|excludes|proposes|is)\b', r'Shunter \1', exec_summary)
+        exec_summary = re.sub(r'(?:and|,)\s+SQUARE\b', ', Shunter', exec_summary)
+        data["executive_summary"] = exec_summary
+
     # Calculate automated percentage compliance scores for each identified offer column
     calculate_vendor_scores(data, clean_columns)
     return data

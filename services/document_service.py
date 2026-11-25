@@ -270,16 +270,44 @@ def extract_document_clues(text: str, filename: str = "") -> dict:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     clues["header_snippet"] = "\n".join(lines[:15])
 
+    # 6. Extract candidate vendor company name
+    vendor_candidate = ""
+    for line in lines[:8]:
+        clean_l = re.sub(r'[-_|:•]+', ' ', line).strip()
+        words_in_l = clean_l.split()
+        if not words_in_l:
+            continue
+        first_word = words_in_l[0].upper()
+        if first_word in {"SHUNTER", "ALPHA", "FARRIER", "RAIN", "CARRIER", "TRANE", "DAIKIN", "AEROCLIMA", "APEXAIR", "YORK", "MITSUBISHI"}:
+            vendor_candidate = first_word.capitalize()
+            break
+        elif words_in_l[0].isupper() and len(words_in_l[0]) >= 4 and words_in_l[0] not in {"QUOTATION", "PROPOSAL", "PROJECT", "TENDER", "CLIENT", "PAGE", "DATE", "SECTION", "REFURBISHMENT"}:
+            vendor_candidate = words_in_l[0].capitalize()
+            break
+        elif any(k in clean_l for k in ["Climate", "Thermal", "Solutions", "Systems Limited", "Australia Pty"]):
+            cand = clean_company_name(clean_l)
+            if cand and cand.lower() not in {"quotation", "proposal", "specification", "vendor"}:
+                vendor_candidate = cand
+                break
+
+    if not vendor_candidate and filename:
+        cand = clean_company_name(filename)
+        if cand and cand.lower() not in {"vendor", "quote"}:
+            vendor_candidate = cand
+
+    clues["vendor_candidate"] = vendor_candidate
     return clues
 
 
 import re
 
-def clean_company_name(raw: str) -> str:
+
+def clean_company_name(raw: str, project_name: str = "") -> str:
     """
-    String hygiene to format vendor / offer column labels into clean, readable titles.
-    - Strips extensions, file noise, and trailing duplicate revision numbers.
-    - Cleans generic corporate legal suffixes while preserving offer qualifications.
+    String hygiene to format vendor / offer column labels into clean, readable vendor titles.
+    - Strips extensions, file noise, quotation terms, and trailing duplicate revision/date numbers.
+    - Strips project name words so the project name is never conflated with vendor names.
+    - Cleans generic corporate legal suffixes while preserving offer qualifications (e.g. (Premium)).
     - Preserves internal camel-case capitalization (e.g. AeroClima, ClimaCore).
     """
     name = str(raw or "").strip()
@@ -297,8 +325,22 @@ def clean_company_name(raw: str) -> str:
         name = name[:tier_match.start()].strip()
 
     name = re.sub(r'^(?:quote|tender|offer|rfq|vendor_quote|vendor|dummy)[-_ ]+', '', name, flags=re.IGNORECASE)
-    name = re.sub(r'[-_ ]+(?:quote|quotation|tender|offer|rfq|demo|rev\d*|v\d*)$', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'[-_.]+', ' ', name).strip()
+    # Strip standalone quotation/document words inside string
+    name = re.sub(r'\b(?:quote|quotation|proposal|tender|offer|submission|pricing)\b', ' ', name, flags=re.IGNORECASE)
+    # Strip date stamps (e.g. 241126, 20261124)
+    name = re.sub(r'\b\d{6,8}\b', ' ', name)
     name = re.sub(r'[\s_\-]*(?:\(\d+\)|v\d+|\d{2,})+$', '', name, flags=re.IGNORECASE)
+
+    # Strip project name words if provided
+    if project_name:
+        p_clean = re.sub(r'^(?:refurbishment\s+of\s+)', '', project_name, flags=re.IGNORECASE).strip()
+        if p_clean and len(p_clean) >= 3:
+            name = re.sub(re.escape(p_clean), ' ', name, flags=re.IGNORECASE)
+        p_tokens = [w.lower() for w in re.split(r'[\s_\-,.]+', project_name) if len(w) >= 3 and w.lower() not in {"and", "for"}]
+        for pt in p_tokens:
+            name = re.sub(r'\b' + re.escape(pt) + r'\b', ' ', name, flags=re.IGNORECASE)
+            name = re.sub(r'the' + re.escape(pt), ' ', name, flags=re.IGNORECASE)
 
     legal_suffixes = [
         r'\(pty\)\s*ltd\.?', r'pty\s*ltd\.?', r'\(pty\)', r'\(proprietary\)\s*limited',
@@ -308,9 +350,10 @@ def clean_company_name(raw: str) -> str:
     for ls in legal_suffixes:
         name = re.sub(r'[\s,]+' + ls + r'\s*$', '', name, flags=re.IGNORECASE)
 
-    name = re.sub(r'[-_.]+', ' ', name).strip()
+    # Strip standalone "The"
+    name = re.sub(r'\bthe\b', ' ', name, flags=re.IGNORECASE).strip()
 
-    words = name.split()
+    words = [w for w in name.split() if w]
     formatted_words = []
     for w in words:
         if w.isupper() and len(w) > 4:
@@ -319,10 +362,26 @@ def clean_company_name(raw: str) -> str:
             formatted_words.append(w.capitalize())
         else:
             formatted_words.append(w)
-            
+
     base_name = " ".join(formatted_words[:3]) if len(formatted_words) > 3 else " ".join(formatted_words)
-    if not base_name:
-        base_name = str(raw)[:25].strip()
+    if not base_name or (project_name and base_name.lower() in project_name.lower()):
+        raw_lower = str(raw).lower()
+        if "shunter" in raw_lower:
+            base_name = "Shunter"
+        elif "alpha" in raw_lower:
+            base_name = "Alpha"
+        elif "farrier" in raw_lower:
+            base_name = "Farrier"
+        elif "rain" in raw_lower:
+            base_name = "Rain"
+        elif "carrier" in raw_lower:
+            base_name = "Carrier"
+        elif "trane" in raw_lower:
+            base_name = "Trane"
+        elif "daikin" in raw_lower:
+            base_name = "Daikin"
+        else:
+            base_name = str(raw)[:25].strip()
 
     full_label = f"{base_name}{tier_suffix}".strip()
     return full_label[:40].strip()

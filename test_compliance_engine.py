@@ -55,17 +55,31 @@ def test_clues_and_naming():
     # Clue extraction must return the expected keys; specific domains depend on the PDF used (Test_Suite is swappable).
     assert "domains" in offer_clues and "emails" in offer_clues and "project_candidates" in offer_clues, "Clue dict must contain domains, emails and project_candidates"
 
-    # Test clean company name with split tiers
+    # Test clean company name with split tiers and project separation
     clean_prem = clean_company_name("Carrier (Premium)")
     clean_budg = clean_company_name("Carrier (Budget)")
     clean_inc = clean_company_name("AeroClima Solutions Inc.")
+    proj = "Refurbishment of The Square"
+    clean_shunter = clean_company_name("Quote_SHUNTER_THE_SQUARE.pdf", proj)
+    clean_alpha = clean_company_name("ALPHA Quote. The Square.pdf", proj)
+    clean_farrier = clean_company_name("The Square. Farrier 241126.pdf", proj)
+    clean_rain = clean_company_name("TheSquare_RAIN Quote.pdf", proj)
+
     print(f"clean_prem: '{clean_prem}'")
     print(f"clean_budg: '{clean_budg}'")
     print(f"clean_inc: '{clean_inc}'")
-    
+    print(f"clean_shunter: '{clean_shunter}'")
+    print(f"clean_alpha: '{clean_alpha}'")
+    print(f"clean_farrier: '{clean_farrier}'")
+    print(f"clean_rain: '{clean_rain}'")
+
     assert clean_prem == "Carrier (Premium)"
     assert clean_budg == "Carrier (Budget)"
     assert "AeroClima" in clean_inc
+    assert clean_shunter == "Shunter", f"Expected Shunter, got {clean_shunter}"
+    assert clean_alpha == "Alpha", f"Expected Alpha, got {clean_alpha}"
+    assert clean_farrier == "Farrier", f"Expected Farrier, got {clean_farrier}"
+    assert clean_rain.upper() == "RAIN", f"Expected Rain, got {clean_rain}"
 
 def test_pdf_report_with_project_and_split_offers():
     print("\n=== TEST 2: PDF Report with Project Name & Split Offers ===")
